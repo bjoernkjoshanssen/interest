@@ -12,39 +12,30 @@ import Mathlib.Order.Filter.Defs
 Math 370
 -/
 section actuarial
+open Finset
 
-lemma sum_fact₀ (n : ℕ) (x : ℝ) (hx : x ≠ 1) : ∑ i ∈ Finset.range (n), x^i = (x^(n) - 1) / (x-1) := by
+/-- The sum of a finite geometric series. -/
+lemma sum_pow (n : ℕ) {x : ℝ} (hx : x ≠ 1) : ∑ i ∈ range n, x^i = (x ^ n - 1) / (x - 1) := by
+  have hx : x - 1 ≠ 0 := sub_ne_zero_of_ne hx
   induction n with
   | zero =>
     simp
   | succ n ih =>
-    rw [Finset.sum_range_succ]
-    rw [ih]
-    suffices ((x ^ n - 1) / (x - 1) + x ^ n) * (x-1) = ((x ^ (n + 1) - 1) / (x - 1)) * (x-1) by
-
-      have := mul_eq_mul_right_iff.mp this
-      cases this with
-      | inl h => tauto
-      | inr h => exfalso;apply hx;linarith
-    have : (x ^ (n + 1) - 1) / (x - 1) * (x - 1) =
-      (x ^ (n + 1) - 1) := by
-        refine div_mul_cancel₀ (x ^ (n + 1) - 1) ?_
-        contrapose! hx;linarith
-    rw [this]
+    rw [sum_range_succ, ih]
+    suffices ((x ^ n - 1) / (x - 1) + x ^ n) * (x-1) =
+             (x ^ (n + 1) - 1) / (x - 1) * (x-1) by
+      rcases mul_eq_mul_right_iff.mp this with (h | h)
+      exact h
+      exact (hx h).elim
     rw [right_distrib]
-    rw [div_mul_cancel₀]
+    repeat rw [div_mul_cancel₀ _ hx]
     ring_nf
-    contrapose! hx;linarith
 
-theorem sum_fact {n : ℕ} {i : ℝ} (hi : i ≠ 0) (hi' : 1 + i ≠ 0) :
-  ∑ i_1 ∈ Finset.range (n + 1), (1 + i)⁻¹ ^ i_1 - 1 = (1 - (1 + i)⁻¹ ^ n) / i := by
-    have h₀ := @sum_fact₀ (n+1) (1+i)⁻¹ (by
-      intro hc
-      have : 1 + i = 1 := inv_eq_one.mp hc
-      apply hi;linarith)
-    have h₁ :
-       (∑ i_1 ∈ Finset.range (n + 1), (1 + i)⁻¹ ^ i_1 )- 1 = ((1 + i)⁻¹ ^ (n + 1) - 1) / ((1 + i)⁻¹ - 1) - 1 := by
-        rw [h₀]
+theorem sum_pow_interest {n : ℕ} {i : ℝ} (hi : i ≠ 0) (hi' : 1 + i ≠ 0) :
+  ∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k - 1 = (1 - (1 + i)⁻¹ ^ n) / i := by
+    have h₁ : (∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k ) - 1
+      = ((1 + i)⁻¹ ^ (n + 1) - 1) / ((1 + i)⁻¹ - 1) - 1 := by
+        rw [sum_pow (n+1) (fun hc => hi <| left_eq_add.mp (inv_eq_one.mp hc).symm)]
     have h₂ : ((1 + i)⁻¹ ^ (n + 1) - 1) / ((1 + i)⁻¹ - 1) - 1
        =  (1 - (1 + i)⁻¹ ^ n) / i := by
         suffices (((1 + i)⁻¹ ^ (n + 1) - 1) / ((1 + i)⁻¹ - 1) - 1) * i = (1 - (1 + i)⁻¹ ^ n) / i * i by
@@ -54,14 +45,9 @@ theorem sum_fact {n : ℕ} {i : ℝ} (hi : i ≠ 0) (hi' : 1 + i ≠ 0) :
             refine div_mul_cancel₀ (1 - (1 + i)⁻¹ ^ n) ?_
             tauto
         rw [this]
-        have :  ((1 + i)⁻¹ ^ (n + 1) - 1) / ((1 + i)⁻¹ - 1)
-          =  (((1 + i)⁻¹ ^ (n + 1) - 1) * (1+i)) / (((1 + i)⁻¹ - 1) * (1 +i)) := by
-            refine Eq.symm (mul_div_mul_right ((1 + i)⁻¹ ^ (n + 1) - 1) ((1 + i)⁻¹ - 1) ?_)
-            tauto
-        rw [this]
-        -- simp
+        rw [← mul_div_mul_right ((1 + i)⁻¹ ^ (n + 1) - 1) ((1 + i)⁻¹ - 1) hi']
         have : (((1 + i)⁻¹ - 1) * (1 + i))
-         = (((1 + i)⁻¹ * (1+i) - 1 * (1+i))) := by exact sub_mul (1 + i)⁻¹ 1 (1 + i)
+         = (((1 + i)⁻¹ * (1+i) - 1 * (1+i))) := sub_mul (1 + i)⁻¹ 1 (1 + i)
         rw [this]
         simp only [one_mul]
         have : (1 + i)⁻¹ * (1 + i) = 1 := by
@@ -98,18 +84,18 @@ theorem sum_fact {n : ℕ} {i : ℝ} (hi : i ≠ 0) (hi' : 1 + i ≠ 0) :
         rw [this]
         simp only [neg_sub]
         linarith
-    have h₃ :  ∑ i_1 ∈ Finset.range (n + 1), (1 + i)⁻¹ ^ i_1 - 1 = (1 - (1 + i)⁻¹ ^ n) / i := by
+    have h₃ :  ∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k - 1 = (1 - (1 + i)⁻¹ ^ n) / i := by
       exact h₁.trans h₂
     exact h₃
 
 
 /-- Annuities. -/
 noncomputable def a : ℕ → ℝ → ℝ := fun n i =>
-  ∑ k ∈ Finset.Icc 1 n, (1 + i)⁻¹ ^ k
+  ∑ k ∈ Icc 1 n, (1 + i)⁻¹ ^ k
 
 /-- Annuity-due. -/
 noncomputable def aquote : ℕ → ℝ → ℝ := fun n i =>
-  ∑ k ∈ Finset.range n, (1 + i) ^ (n - k)
+  ∑ k ∈ range n, (1 + i) ^ (n - k)
 
 
 --ä ä
@@ -127,7 +113,7 @@ noncomputable def a_formula : ℕ → ℝ → ℝ  := fun n i =>
 
 /-- Annuities. Another variant. -/
 noncomputable def a_variant : ℕ → ℝ → ℝ := fun n i =>
-  ∑ k ∈ Finset.range (n + 1), (1 + i)⁻¹ ^ k - 1
+  ∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k - 1
 
 
 /-- Actuarial notation. -/
@@ -159,7 +145,7 @@ theorem a_eq_a_formula {i : ℝ} (hi : i ≠ 0) (hi' : 1 + i ≠ 0) :
   rw [a_eq_a_variant]
   rw [a_formula]
   rw [a_variant]
-  rw [← @sum_fact n i]
+  rw [← @sum_pow_interest n i]
   tauto
   tauto
 
@@ -217,10 +203,10 @@ theorem annuity_limiting_value {i : ℝ} (hi : 0 < i) :
       {i j : ℝ} (hj : 0 < i) (hij : i ≤ j) :
     (a_formula n ⌝ j) ≤ a_formula n ⌝ i := by
     unfold a_formula
-    rw [← @sum_fact n i]
-    rw [← @sum_fact n j]
-    suffices  ∑ i_1 ∈ Finset.range (n + 1), (1 + j)⁻¹ ^ i_1 ≤ ∑ i_1 ∈ Finset.range (n + 1), (1 + i)⁻¹ ^ i_1 by linarith
-    refine Finset.sum_le_sum ?_
+    rw [← @sum_pow_interest n i]
+    rw [← @sum_pow_interest n j]
+    suffices  ∑ k ∈ range (n + 1), (1 + j)⁻¹ ^ k ≤ ∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k by linarith
+    refine sum_le_sum ?_
     intro k hk
     refine pow_le_pow_left₀ ?_ ?_ k
     suffices 0 ≤ 1 + j by positivity
@@ -254,11 +240,11 @@ theorem annuity_value_bounded {i : ℝ} (hi : i > 0) (n : ℕ) :
   · tauto
   · simp
 
-example (n : ℕ) : ∑ i ∈ Finset.range (n+1), (1/(2 : ℝ))^i = 2 - (1/(2 : ℝ))^n := by
+example (n : ℕ) : ∑ i ∈ range (n+1), (1/(2 : ℝ))^i = 2 - (1/(2 : ℝ))^n := by
   induction n with
   | zero => simp;linarith
   | succ n ih =>
-    rw [Finset.sum_range_succ]
+    rw [sum_range_succ]
     rw [ih]
     field_simp
     ring_nf
