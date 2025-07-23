@@ -40,54 +40,22 @@ theorem sum_pow_interest {n : ℕ} {i : ℝ} (hi : i ≠ 0) (hi' : 1 + i ≠ 0) 
        =  (1 - (1 + i)⁻¹ ^ n) / i := by
         suffices (((1 + i)⁻¹ ^ (n + 1) - 1) / ((1 + i)⁻¹ - 1) - 1) * i = (1 - (1 + i)⁻¹ ^ n) / i * i by
           cases mul_eq_mul_right_iff.mp this <;> tauto
-        have : (1 - (1 + i)⁻¹ ^ n) / i * i =
-          (1 - (1 + i)⁻¹ ^ n) := by
-            refine div_mul_cancel₀ (1 - (1 + i)⁻¹ ^ n) ?_
-            tauto
-        rw [this]
-        rw [← mul_div_mul_right ((1 + i)⁻¹ ^ (n + 1) - 1) ((1 + i)⁻¹ - 1) hi']
-        have : (((1 + i)⁻¹ - 1) * (1 + i))
-         = (((1 + i)⁻¹ * (1+i) - 1 * (1+i))) := sub_mul (1 + i)⁻¹ 1 (1 + i)
-        rw [this]
-        simp only [one_mul]
-        have : (1 + i)⁻¹ * (1 + i) = 1 := by
-          refine inv_mul_cancel₀ ?_
-          tauto
-        rw [this]
-        have : (1 - (1 + i))
-          = -i := by linarith
-        rw [this]
+        rw [div_mul_cancel₀ (1 - (1 + i)⁻¹ ^ n) hi, ← mul_div_mul_right _ _ hi']
+        rw [sub_mul (1 + i)⁻¹ 1 _, one_mul, inv_mul_cancel₀ hi', sub_add_cancel_left 1 i]
         have : ((1 + i)⁻¹ ^ (n + 1) - 1) * (1 + i)
           = ((1 + i)⁻¹ ^ (n + 1) * (1+i) - 1*(1+i)) := by
             rw [sub_mul]
         rw [this]
         simp only [one_mul]
-        have : (1 + i)⁻¹ ^ (n + 1) * (1 + i)
-          = (1 + i)⁻¹ ^ n := by
-            rw [pow_succ]
-            have : (1 + i)⁻¹ * (1 + i) = 1 := by tauto
-            rw [mul_assoc,this]
-            simp only [mul_one]
-        rw [this]
-
-        rw [sub_mul]
-        simp only [one_mul]
+        rw [pow_succ, mul_assoc,inv_mul_cancel₀ hi', mul_one, sub_mul, one_mul]
         have : ((1 + i)⁻¹ ^ n - (1 + i)) / -i =
           - ((1 + i)⁻¹ ^ n - (1 + i)) / i := by
             field_simp
             ring_nf
         rw [this]
-        have : (-((1 + i)⁻¹ ^ n - (1 + i))) / i * i
-          = -((1 + i)⁻¹ ^ n - (1 + i)) := by
-            refine div_mul_cancel₀ _ ?_
-            tauto
-        rw [this]
-        simp only [neg_sub]
+        rw [div_mul_cancel₀ _ hi, neg_sub]
         linarith
-    have h₃ :  ∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k - 1 = (1 - (1 + i)⁻¹ ^ n) / i := by
-      exact h₁.trans h₂
-    exact h₃
-
+    exact h₁.trans h₂
 
 /-- Annuities. -/
 noncomputable def a : ℕ → ℝ → ℝ := fun n i =>
