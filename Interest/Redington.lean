@@ -1,8 +1,3 @@
-
-import Mathlib.Analysis.Calculus.Deriv.Basic
-import Mathlib.Analysis.Calculus.Deriv.Add
-import Mathlib.Analysis.Calculus.Deriv.Mul
-import Mathlib.Analysis.Calculus.FDeriv.Mul
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 
 /-!
@@ -14,7 +9,6 @@ Translated to Lean 4 by Quinn Culver; edited by Bjørn Kjos-Hanssen
 -/
 
 open Real
-
 
 lemma D_add {f g : ℝ → ℝ} (df : Differentiable ℝ f) (dg : Differentiable ℝ g) :
     deriv (f + g) = deriv f + deriv g := by
@@ -29,35 +23,17 @@ lemma D_mul {f g : ℝ → ℝ} (df : Differentiable ℝ f) (dg : Differentiable
   rfl
 
 lemma second_D_mul {f g : ℝ → ℝ} (df : Differentiable ℝ f) (d₂f : Differentiable ℝ (deriv f)) (dg : Differentiable ℝ g) (d₂g : Differentiable ℝ (deriv g)) :
-deriv (deriv (f * g)) = deriv (deriv f) * g + 2 * deriv f * deriv g + f * deriv (deriv g) :=
-  let f' := deriv f
-  let f'' := deriv f'
-  let g' := deriv g
-  let g'' := deriv g'
-  have h₁ : Differentiable ℝ (f' * g) := Differentiable.mul d₂f dg
-  have h₂ :Differentiable ℝ (f * g') := Differentiable.mul df d₂g
-    calc
-      deriv (deriv (f * g)) = deriv (f' * g + f * g') := by rw [D_mul df dg]
-      _ = deriv (f' * g) + deriv (f * g') := by rw [D_add h₁ h₂]
-      _ = f'' * g + f' * g' + deriv (f * g') := by rw [D_mul d₂f dg]
-      _ = f'' * g + f' * g' + (f' * g' + f * g'') := by rw [D_mul df d₂g]
-      _ = f'' * g + f' * g' + f' * g' + f * g'' := by rw [add_assoc (f'' * g + f' * g') (f' * g') (f * g'')]
-      _ = f'' * g + 2 * (f' * g') + f * g'' := by rw [two_mul (f' * g'), add_assoc (f'' * g) (f' * g') (f' * g')]
-      _ = f'' * g + 2 * f' * g' + f * g'' := by rw [mul_assoc 2 f' g']
+    deriv (deriv (f * g)) = deriv (deriv f) * g + 2 * deriv f * deriv g + f * deriv (deriv g) := by
+  rw [D_mul df dg, D_add (d₂f.mul dg) (df.mul d₂g), D_mul d₂f dg, D_mul df d₂g]
+  grind
 
 lemma exp_D {f : ℝ → ℝ} (df : Differentiable ℝ f) : deriv (λ x : ℝ => exp (f x)) = λ x : ℝ => exp (f x) * deriv f x := funext (λ x => deriv_exp (df x))
 
-lemma const_mul_D (a : ℝ) : deriv (λ x : ℝ => a * x) = λ _ : ℝ => a :=
-  have h₁ : ∀ x : ℝ, (a * id x = (λ y : ℝ => a * y) x) := by
-    intro z
-    simp
-  funext (λ y => (calc
-      _ = deriv (λ x : ℝ => a * x) y    := by rfl
-    _ = deriv (λ x : ℝ => a * (id x)) y := by rw [(funext h₁)]
-    _ = a * (deriv id y)                := by rw[(deriv_const_mul a (differentiable_id y) )]
-    _ = a * 1                           := by rw [deriv_id]
-    _ = a                               := by rw [mul_one]))
-
+lemma const_mul_D (a : ℝ) : deriv (λ x : ℝ => a * x) = λ _ : ℝ => a := by
+  ext y
+  rw [deriv_const_mul]
+  simp only [deriv_id'', mul_one]
+  exact differentiableAt_fun_id
 
 /--
 The function satisfies Redington immunization at a point.
