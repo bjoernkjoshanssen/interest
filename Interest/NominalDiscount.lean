@@ -476,3 +476,507 @@ lemma chan_tse_exercise_1_7 {a i : ℝ → ℝ} (c : ℝ)
     ∀ t, a t = c := by
   intro t
   sorry
+
+/-
+
+# Theory of nominal and effective interest and discount rates
+
+i ^ (m) is the nominal interest which when compounded `m` times corresponds
+to the actual annual interest `i`
+(1 + i ^ (2) / 2) ^ 2 = 1 + i
+
+
+-/
+
+/-- Nominal interest rate
+corresponding to effective rate `i` with compounding frequency `m`.  -/
+noncomputable def Real.nomInt (i : ℝ) (m : ℝ) := m * ((1 + i) ^ ((1:ℝ) / m) - 1)
+
+/-- The force of interest corresponding to
+effective interest rate `i` is the nominal interest with
+`m = ∞` times a year compounding frequency.
+-/
+noncomputable def Real.force (i : ℝ) := log (1 + i)
+noncomputable def Real.effIntTop (i : ℝ) := rexp i - 1
+
+lemma force_effIntTop (i : ℝ) (hi : 0 < 1 + i) : i.force.effIntTop = i := by
+  unfold force effIntTop
+  rw [exp_log hi]
+  simp
+
+lemma effIntTop_force (i : ℝ) : i.effIntTop.force = i := by
+  simp [force, effIntTop]
+
+example : Function.RightInverse Real.effIntTop Real.force := by
+  intro x
+  simp [force, effIntTop]
+
+
+lemma l₁ (i : ℝ) : i ≤ i.effIntTop := by
+  unfold effIntTop
+  suffices i + 1 ≤ rexp i by linarith
+  exact add_one_le_exp i
+
+
+
+
+/-- As a limiting form of nominal interest rate,
+the force of interest is less than the effective interest rate.
+  -/
+example (i : ℝ) (hi : 0 < 1 + i) : i.force ≤ i := by
+  unfold force
+  refine (log_le_iff_le_exp ?_).mpr ?_
+  exact hi
+  rw [add_comm]
+  exact add_one_le_exp i
+
+
+
+noncomputable def Real.effInt (im m : ℝ) := (1 + im / m) ^ m - 1
+
+example (i : ℝ) (h : 0 < 1 + i) : i.force ≤ i.nomInt 2 := by
+  suffices (i.force).effInt 2 ≤ (i.nomInt 2).effInt 2 by
+    have := @effInt_increasing
+
+    sorry
+  have : (i.nomInt 2).effInt 2 = i := sorry
+  rw [this]
+  unfold force effInt
+  suffices (1 + log (1 + i) / 2) ^ (2:ℝ) ≤ 1 + i by
+    linarith
+  generalize 1 + i = j
+  sorry
+
+example (i : ℝ) (h : 0 < 1 + i) : i.force ≤ i.nomInt 2 := by
+  suffices (i.force).effIntTop ≤ (i.nomInt 2).effIntTop by
+    have := @effInt_increasing
+
+    sorry
+  have : (i.nomInt 2).effInt 2 = i := sorry
+  rw [force_effIntTop _ h]
+  unfold effIntTop nomInt
+  sorry
+
+lemma compound_leftinv {i m : ℝ} (hm : m ≠ 0)
+    (hi : 0 ≤ 1 + i) : (i.nomInt m).effInt m = i := by
+  unfold nomInt effInt
+  rw [← eq_sub_of_add_eq']
+  generalize 1 + i = j at *
+  suffices (1 + m * (j ^ (1 / m) - 1) / m) = j ^ (1 / m) by
+    rw [this]
+    simp
+    rw [← rpow_mul]
+    rw [inv_mul_cancel₀ hm]
+    simp
+    exact hi
+  ring_nf
+  field_simp
+
+/-- Here we use `1 ≤ m` instead of `m ≠ 0`...
+is it necessary?
+-/
+lemma compound_rightinv {i m : ℝ} (hml : 1 ≤ m)
+    (hi : 0 ≤ 1 + i) : (i.effInt m).nomInt m = i := by
+  unfold nomInt effInt
+  suffices ((1 + ((1 + i / m) ^ m - 1)) ^ (1 / m) - 1) = i / m by
+    rw [this]
+    field_simp
+  have h₀ : 0 ≤ 1 + i / m := by
+    field_simp
+    apply div_nonneg
+    linarith
+    linarith
+  generalize i / m = j at *
+  suffices (1 + ((1 + j) ^ m - 1)) ^ (1 / m) = 1 + j by
+    rw [this]
+    linarith
+
+  generalize 1 +j  = k at *
+  field_simp
+  ring_nf
+  rw [← rpow_mul h₀]
+  have hm : m ≠ 0 := by linarith
+  rw [mul_inv_cancel₀ hm]
+  simp
+
+lemma pow_pow {x y z : ℝ} (h : x ^ y < z ^ y)
+    (hx : 1 < x)
+    (hy : 0 < y)
+    (hz : 1 < z)
+    : x < z := by
+  rw [rpow_def_of_pos (by linarith)] at h
+  rw [rpow_def_of_pos (by linarith)] at h
+  have h₀ : log x * y < log z * y := exp_lt_exp.mp h
+  have : log x < log z := (mul_lt_mul_iff_of_pos_right hy).mp h₀
+  refine (log_lt_log_iff ?_ ?_).mp this <;> linarith
+
+
+/-- Conversion between nominal and effective interest rate
+ is a bijection on `[0, ∞)`. -/
+noncomputable def compound_interest {m : ℝ} (hm : 1 ≤ m) : PartialEquiv ℝ ℝ := {
+  toFun := fun i => i.nomInt m
+  invFun := fun i => i.effInt m
+  source := {i | 0 ≤ i}
+  target := {i | 0 ≤ i}
+  map_source' := by
+    intro i hi
+    unfold nomInt
+    simp at hi ⊢
+    apply mul_nonneg
+    linarith
+    suffices 1 ≤ (1 + i) ^ m⁻¹ by linarith
+    suffices 1 ^ m⁻¹ ≤ (1 + i) ^ m⁻¹ by simpa using this
+    have : 1 ≤ 1 + i := by linarith
+    have : 0 < m⁻¹ := by field_simp;linarith
+    refine (rpow_le_rpow_iff ?_ ?_ ?_).mpr (by tauto)
+    simp
+    linarith
+    simp
+    linarith
+  map_target' := by
+    intro i hi
+    unfold effInt
+    simp at hi ⊢
+    suffices 1 ^ m ≤ (1 + i / m) ^ m by simpa using this
+    have : 1 ≤ 1 + i := by linarith
+    have : 0 < m⁻¹ := by field_simp;linarith
+    refine (rpow_le_rpow_iff ?_ ?_ ?_).mpr (by
+      suffices 0 ≤ i / m by linarith
+      apply div_nonneg
+      tauto
+      linarith)
+    simp
+    apply add_nonneg
+    simp
+    apply div_nonneg
+    tauto
+    linarith
+    simp at this
+    tauto
+  left_inv' := fun i hi => compound_leftinv (by linarith) (by simp at hi;linarith)
+  right_inv' := fun i hi => compound_rightinv hm (by simp at hi;linarith)
+}
+
+
+/-- i ^ (1) in actuarial notation, is just i.  -/
+example (i : ℝ) : i.nomInt 1 = i := by simp [nomInt]
+
+/-- The nominal interest rate with frequency of compounding `n`
+is strictly less than the effective interest rate.
+-/
+theorem nomIntLt (i n : ℝ) (hn : 1 < n) (hi : 0 < i) :
+
+    i.nomInt n < i := by
+
+  have h₀ : ((1 + i) ^ n⁻¹) ^ n = (1 + i) ^ (n⁻¹ * n) := by
+    rw [rpow_mul]
+    apply add_nonneg
+    simp
+    linarith
+  have h₂ : Invertible n := by
+    refine invertibleOfNonzero ?_
+    linarith
+  have h₁ : n⁻¹ * n = 1 := inv_mul_cancel_of_invertible n
+  simp [nomInt]
+  suffices ((1 + i) ^ n⁻¹) < 1 + i / n by
+    have : 0 < n := by linarith
+    suffices ((1 + i) ^ n⁻¹ - 1) < i / n by
+      generalize  (1 + i) ^ n⁻¹ - 1 = m at *
+      exact (lt_div_iff₀' (by tauto)).mp this
+    linarith
+  suffices ((1 + i) ^ n⁻¹) ^ n < (1 + i / n) ^ n by
+    apply pow_pow this
+    have : (1:ℝ) = (1:ℝ) ^ n⁻¹ := by simp
+    nth_rw 1 [this]
+    exact (rpow_lt_rpow_iff (by simp) (by linarith) (by simp;linarith)).mpr <| by linarith
+    linarith
+    suffices 0 < i / n by linarith
+    apply div_pos hi
+    linarith
+  rw [← rpow_mul]
+  rw [h₁]
+  simp
+  have := @effInt_increasing n i 1 (by linarith) (by linarith)
+    (by simp) hn
+  simp at this
+  exact this
+  linarith
+
+
+/-!
+
+# Nominal discount rate
+corresponding to effective rate `d` with compounding frequency `m`.  -/
+
+noncomputable def Real.nomDis (d : ℝ) (m : ℝ) := m * (1 - (1 - d) ^ ((1:ℝ) / m))
+
+/--  1 - d = (1 - d_m/m)^m  -/
+noncomputable def Real.effDis (d : ℝ) (m : ℝ) := 1 - (1 - d / m) ^ m
+
+
+
+/-- This shows that our definition of
+`nomDis` is good. -/
+lemma nomDis_good {d m : ℝ} (hd : 0 ≤ 1 - d) (hm : m ≠ 0):
+    (1 - (d.nomDis m) / m) ^ (m:ℝ) = 1 - d := by
+  simp [Real.nomDis]
+  have h₀ := (@rpow_left_inj (z := 1 / m) (x := ((1 - m * (1 - (1 - d) ^ m⁻¹) / m) ^ m))
+    (y := 1 - d) (by
+      apply rpow_nonneg
+      field_simp
+      apply rpow_nonneg hd) hd (by field_simp)).mp
+  apply h₀
+  rw [← rpow_mul]
+  field_simp
+  ring_nf
+  field_simp
+  apply rpow_nonneg hd
+
+lemma compound_LeftDis {d m : ℝ} (hd : 0 ≤ 1 - d) (hm : m ≠ 0) :
+
+    (d.nomDis m).effDis m = d := by
+
+  have := nomDis_good hd hm
+  unfold effDis at *
+  linarith
+
+lemma compound_RightDis {d m : ℝ} (hd : d ≤ m) (hm₁ : 1 ≤ m) : (d.effDis m).nomDis m = d := by
+  have hm : m ≠ 0 := by linarith
+  unfold nomDis effDis at *
+  field_simp
+  ring_nf
+  rw [CommGroupWithZero.mul_inv_cancel m hm]
+  rw [← rpow_mul]
+  rw [CommGroupWithZero.mul_inv_cancel m hm]
+  field_simp
+  suffices d * m⁻¹ ≤ 1 by linarith
+  apply mul_inv_le_one_of_le₀ <;> linarith
+
+
+lemma desmosInspired {m : ℝ} (hm : 0 < m)
+  (d : ℝ) (h : d ≤ m) :
+  d.effDis m ≤ 1 := by
+  unfold effDis
+  suffices 0 ≤  (1 - d / m) ^ m by linarith
+  apply rpow_nonneg
+  suffices d / m ≤ 1 by linarith
+  suffices d / m ≤ m / m by field_simp at this;tauto
+  refine (div_le_div_iff_of_pos_right ?_).mpr h
+  linarith
+
+lemma desmosInspired₂ {m : ℝ} (hm : 1 ≤ m)
+  (d : ℝ) (h : d ≤ 1) :
+  d.nomDis m ≤ m := by
+  unfold nomDis
+  suffices 0 ≤ (1 - d) ^ (1 / m) by field_simp;tauto
+  apply rpow_nonneg
+  suffices d / m ≤ 1 by linarith
+  suffices d / m ≤ m / m by convert this;field_simp
+  have : d ≤ m := by linarith
+  refine (div_le_div_iff_of_pos_right ?_).mpr this
+  linarith
+
+
+/-- Conversion between nominal and effective interest rate. -/
+noncomputable def compound_discount {m : ℝ} (hm : 1 ≤ m) : PartialEquiv ℝ ℝ := {
+  toFun := fun d => d.nomDis m
+  invFun := fun d => d.effDis m
+  source := Set.Ioo 0 1
+  target := Set.Ioo 0 m
+  map_source' := by
+    intro d hd
+    constructor
+    · unfold nomDis
+      simp at hd ⊢
+      apply mul_pos
+      linarith
+      suffices (1 - d) ^ m⁻¹ < 1 ^ m⁻¹ by
+        simp at this; linarith
+      apply rpow_lt_rpow
+      linarith
+      linarith
+      field_simp
+      linarith
+    · unfold nomDis
+      simp at hd ⊢
+      field_simp
+      apply rpow_pos_of_pos
+      linarith
+  map_target' := by
+    intro d hd
+    unfold effDis
+    simp at hd ⊢
+    constructor
+    · suffices (1 - d / m) ^ m < 1 ^ m by
+        simp at this
+        exact this
+      apply rpow_lt_rpow
+      suffices d / m ≤ 1 by linarith
+
+      suffices d ≤ m by
+        field_simp
+        suffices d / m ≤ m / m by field_simp at this;exact this
+        refine (div_le_div_iff_of_pos_right ?_).mpr this
+        linarith
+      linarith
+      suffices 0 < d / m by linarith
+      apply div_pos
+      · tauto
+      · linarith
+      linarith
+    · apply rpow_pos_of_pos
+      field_simp
+      tauto
+  left_inv' := fun d hd => by
+    have := @compound_LeftDis
+    apply this
+    simp at hd
+    linarith
+    linarith
+  right_inv' := fun d hd => by
+    simp at hd
+    exact @compound_RightDis d m (by linarith) hm
+}
+
+example : (1:ℝ).nomDis 2 = 2 := by
+  unfold nomDis
+  simp
+
+example : ((2:ℝ) / 3).nomDis 2 = 2 * (1 - 1 / √ 3) := by
+  unfold nomDis
+  simp
+  field_simp
+  have : ((3:ℝ) - 2) / 3 = 1 / 3:= by field_simp;linarith
+  rw [this]
+  have : ((1:ℝ) / 3) ^ ((1:ℝ) / 2) = √(1 / 3) := by
+    exact Eq.symm (sqrt_eq_rpow (1 / 3))
+  rw [this]
+  simp
+
+
+/-- Aug 25: Nominal discount is greater than
+effective discount. -/
+theorem nomDis_gt {d m : ℝ} (hm : 1 < m) (hd₀ : 0 < d)
+    (hd₁ : 0 < 1 - d) :
+
+    d.nomDis m > d := by
+
+  by_cases H : d.nomDis m ≥ 1
+  linarith
+  have h₁ := @nomDis_good d m (by linarith) (by linarith)
+  have h₀ := @effInt_increasing (w := 1) (u := - d.nomDis m) (k := m)
+    (by linarith) (by
+      simp [Real.nomDis]
+      constructor
+      linarith
+      intro hc
+      have : 1 = (1 - d) ^ m⁻¹ := by linarith
+      have : 1 ^ m⁻¹ = (1 - d) ^ m⁻¹ := by
+        rw [← this]
+        simp
+      have : 1 = 1 - d :=  (@rpow_left_inj 1 (1-d) m⁻¹ (by simp)
+          (by linarith) (by simp;linarith)).mp this
+      linarith) (by simp) hm
+  simp at h₀
+  suffices 1 - d.nomDis m < 1 - d by linarith
+  rw [← h₁]
+  suffices 1  < (1 - d.nomDis m / m) ^ m + d.nomDis m by
+    linarith
+  convert h₀ using 1
+  congr
+  generalize d.nomDis m = D
+  ring_nf
+
+
+
+/-- This is probably covered by other results. -/
+example (i x : ℝ) (n : ℝ) (hi : 0 ≤ i) (hn : n > 0)
+  (h : 1 + x = (1 + i / n) ^ (n:ℝ)) :
+  i = n * ((1 + x) ^ (1 / n) - 1) := by
+  have : (1 + x) ^ ((1:ℝ) / n) = 1 + i / n := by
+    have hu : 1 + i / n ≥ 0 := by
+      apply add_nonneg
+      simp
+      apply div_nonneg
+      exact hi
+      linarith
+    generalize 1 + i / n = u at *
+    rw [h]
+    have : (u ^ n) ^ (1 / n) = u ^ (n * (1 / n)) := by
+      refine Eq.symm (rpow_mul ?_ n (1 / n))
+      tauto
+    rw [this]
+    have : u = u ^ (1:ℝ) := by exact Eq.symm (rpow_one u)
+    nth_rw 2 [this]
+    congr
+    field_simp
+  generalize x ^ (1 / n) = v at *
+  rw [this]
+  field_simp
+
+
+noncomputable def compound_discount_neg {m : ℝ} (hm : 1 ≤ m) : PartialEquiv ℝ ℝ := {
+  toFun := fun d => d.nomDis m
+  invFun := fun d => d.effDis m
+  source := Set.Iic 0
+  target := Set.Iic 0
+  map_source' := by
+    intro x hx
+    simp [nomDis] at hx ⊢
+    sorry
+  map_target' := by
+    intro x hx
+    simp [effDis] at hx ⊢
+    sorry
+  left_inv' := by
+    intro x hx
+    simp [effDis, nomDis] at hx ⊢
+    suffices  1 - x = (1 - m * (1 - (1 - x) ^ m⁻¹) / m) ^ m
+      by linarith
+    suffices  (1 - x) ^ m⁻¹ = (1 - m * (1 - (1 - x) ^ m⁻¹) / m)
+      by field_simp;sorry
+    have : m * (1 - (1 - x) ^ m⁻¹) / m =
+      (1 - (1 - x) ^ m⁻¹) := by sorry
+    rw [this]
+    simp
+  right_inv' := by
+    intro x hx
+    simp [nomDis, effDis] at hx ⊢
+    sorry
+}
+
+
+noncomputable def compound_discount'' {m : ℝ} (hm : 1 ≤ m) : PartialEquiv ℝ ℝ := {
+  toFun := fun d => d.nomDis m
+  invFun := fun d => d.effDis m
+  source := Set.Iio m
+  target := Set.Iio 1
+  map_source' := by
+    intro x hx
+    have : x ∈ Set.Iic 0 ∨ x ∈ Set.Ioo 0 m := by
+      simp at hx ⊢
+      by_cases H : x ≤ 0
+      tauto
+      simp at H
+      tauto
+    cases this with
+    | inl h =>
+      have := (compound_discount_neg hm).map_source'
+      unfold compound_discount_neg at this
+      -- have := (compound_discount hm).map_source'
+      -- unfold compound_discount at this
+      simp at this ⊢
+      simp at hx h
+      sorry
+    | inr h =>
+      have := (compound_discount_neg hm).map_source'
+      unfold compound_discount_neg at this
+      simp at this
+      have := (compound_discount hm).map_source'
+      unfold compound_discount at this
+      simp at this hx h ⊢
+      sorry
+  map_target' := by sorry
+  left_inv' := by sorry
+  right_inv' := by sorry
+}
