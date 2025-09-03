@@ -283,6 +283,103 @@ lemma chan_tse_exercise_1_2 (ε : ℝ) (hε : 0 < ε) :
   (1 + ε/4) ^ (8:ℝ) * (1 + ε/(3 * 4)) ^ 1 := by
     exact @rational_exponent_interest_le_integer ε 4 8 3 hε (by simp) (by simp) (by simp)
 
+namespace interest
+
+/-!
+Interest namespace will clash with annuity namespaces since they use `a` for different things.
+-/
+
+-- Principal
+variable (A₀ : ℝ)
+
+-- Accumulation function
+variable (a : ℝ → ℝ)
+
+-- Amount function
+def A : ℝ → ℝ := fun t => a t * A₀
+
+lemma A_def (t : ℝ) : A A₀ a t = a t * A₀ := by rfl
+
+-- Interest function. Probably beset to define it directly in terms of a, A₀
+def I : ℝ → ℝ := fun t => (a t - a (t - 1)) * A₀
+
+/-- The effective interest rate function `i(t)` is defined so that
+`a t = (1 + i t) * a (t - 1)`.
+-/
+noncomputable def i : ℝ → ℝ := fun t => a t / a (t - 1) - 1
+
+/-- The effective discount rate function `d(t)` is defined so that
+`a (t - 1) = (1 - d t) * a t`.
+-/
+noncomputable def d : ℝ → ℝ := fun t => 1 - a (t - 1) / a t
+end interest
+
+/-- If the principal is zero then so is the amount function. -/
+lemma principal_zero (a : ℝ → ℝ) : interest.A 0 a = fun _ => 0 := by
+  unfold interest.A
+  simp
+
+lemma effective_interest_rate_def (a : ℝ → ℝ) (t : ℝ)
+    (h : a (t - 1) ≠ 0) :
+    a t = (1 + interest.i a t) * a (t - 1) := by
+  field_simp [interest.i]
+
+lemma effective_discount_rate_def (a : ℝ → ℝ) (t : ℝ)
+    (h : a t ≠ 0) :
+    a (t - 1) = (1 - interest.d a t) * a t := by
+  field_simp [interest.d]
+
+/-- This lemma can replace `h1_10₁` in `chan_tse_1_3`. -/
+lemma h1_10₁ {a : ℝ → ℝ}
+  {t : ℝ} (h : a (t - 1) ≠ 0) (A₀: ℝ) : interest.I A₀ a t = interest.A A₀ a (t - 1) * interest.i a t := by
+  unfold interest.I interest.A interest.i
+  field_simp
+  ring_nf
+
+-- not needed
+-- lemma h1_10₂ {a : ℝ → ℝ} (A₀ t : ℝ) :
+--   interest.I A₀ a t = interest.A A₀ a t - interest.A A₀ a (t - 1) := by
+--   unfold interest.I interest.A
+--   ring_nf
+
+/--
+This is a more theoretical version of `chan_tse_1_3`.
+-/
+lemma chan_tse_1_3NEW {a : ℝ → ℝ} (A₀ : ℝ)
+  (h1_3₁ : interest.A A₀ a 4 = 1200)
+  (h1_3₂ : ∀ t, interest.i a t = t ^ 2 / 100) :
+  interest.I A₀ a 5 = 300 ∧ interest.A A₀ a 6 = 2040 := by
+  have h₅ : (5:ℝ) - 1 = 4 := by linarith
+  have h₆ : (6:ℝ) - 1 = 5 := by linarith
+  have ha : a (5 - 1) ≠ 0 := by
+      rw [show (5:ℝ)-1=4 by linarith]
+      unfold interest.A at h1_3₁
+      intro hc
+      rw [hc] at h1_3₁
+      simp at h1_3₁
+  have h₀ : interest.I A₀ a 5 = 300 := by
+    rw [h1_10₁ ha, h₅, h1_3₁, h1_3₂]
+    linarith
+  have h₁ : interest.A A₀ a 5 = 1500 := by
+    unfold interest.I at h₀
+    unfold interest.A at h1_3₁ ⊢
+    rw [h₅] at h₀
+    linarith
+  constructor
+  · exact h₀
+  · have h₅ : interest.I A₀ a 6 = interest.A A₀ a 6 - interest.A A₀ a 5 := by
+      unfold interest.I at h₀ ⊢
+      unfold interest.A at h1_3₁ ⊢ h₁
+      rw [h₅] at h₀
+      rw [h₆]
+      linarith
+    rw [h1_10₁, h1_3₂, h₆, h₁] at h₅
+    linarith
+    rw [h₆]
+    intro hc
+    rw [interest.A_def, hc] at h₁
+    simp at h₁
+
 
 /-- Exercise 1.3
 `h1_3₁` means the `first` assumption stated in `1.3` and so on.

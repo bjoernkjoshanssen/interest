@@ -5,7 +5,6 @@ import Mathlib.Order.Filter.Defs
 ## Financial Mathematis
 Math 370
 -/
-section actuarial
 open Finset
 
 /-- The sum of a finite geometric series. -/
@@ -23,6 +22,8 @@ theorem sum_pow_interest (n : ℕ) {i : ℝ} (hi : i ≠ 0) (hi' : 1 + i ≠ 0) 
   ∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k - 1 = (1 - (1 + i)⁻¹ ^ n) / i :=
   .trans (congrArg (fun x => x-1) <| sum_pow (n+1)
     fun hc => hi <| left_eq_add.mp (inv_eq_one.mp hc).symm) (by grind)
+
+namespace annuity
 
 /-- The value of the first `n` payments of an annuity of 1 per period,
 with interest rate `i`. -/
@@ -169,4 +170,4 @@ theorem annuity_with_interest_half {n : ℕ} : (a_formula n ⌝ (1/2)) = 2 * (1 
     | succ n =>
       apply (pow_left_inj₀ ?_ ?_ ?_).mpr (by simp) <;> positivity
 
-end actuarial
+end annuity
