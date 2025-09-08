@@ -296,17 +296,170 @@ variable (A₀ : ℝ)
 variable (a : ℝ → ℝ)
 
 -- Amount function
-def A : ℝ → ℝ := fun t => a t * A₀
+def A : ℝ → ℝ := fun t => a t * A₀ -- BAD BECAUSE IT MAKES a 0 = 1 NOT AUTOMATIC
 
 lemma A_def (t : ℝ) : A A₀ a t = a t * A₀ := by rfl
 
 -- Interest function. Probably beset to define it directly in terms of a, A₀
 def I : ℝ → ℝ := fun t => (a t - a (t - 1)) * A₀
 
+/-- Effective interest over an interval, not annualized.
+i₂ u v = (a v - a u) / (a u)
+This should be used when u ≤ v.
+See Chan & Tse (1.15).
+
+One can prove that the limit of i₂ u (u + h) / h as h → 0 is a' u / a u:
+(a (u+h) - a u) / (h * (a u))
+-/
+noncomputable def i₂ : ℝ → ℝ → ℝ := fun u v => a v / a u - 1
+
+/-- Force of interest with not necessarily constant interest rates. -/
+noncomputable def δ : ℝ → ℝ := fun u  => deriv a u / a u
+
+
+/-- Annualized effective interest over an interval.
+Equation (1.13) in Chan & Tse.
+-/
+noncomputable def i₂ann : ℝ → ℝ → ℝ := fun u v => (a v / a u) ^ (1 / (v - u)) - 1
+
+lemma i₂ann_def (u v : ℝ) (h : u < v)
+    (hu : 0 < a u)
+    (hv : 0 ≤ a v) :
+    a v = a u * (1 + i₂ann a u v) ^ (v - u) := by
+  unfold i₂ann
+  field_simp
+  rw [← rpow_mul]
+  simp
+  have : (v - u)⁻¹ * (v - u) = 1 := by
+    refine inv_mul_cancel₀ ?_
+    linarith
+  rw [this]
+  simp
+  field_simp
+  apply div_nonneg <;> linarith
+
 /-- The effective interest rate function `i(t)` is defined so that
 `a t = (1 + i t) * a (t - 1)`.
 -/
-noncomputable def i : ℝ → ℝ := fun t => a t / a (t - 1) - 1
+noncomputable def i : ℝ → ℝ := fun t => i₂ a (t-1) t
+
+noncomputable def v : ℝ → ℝ := fun t => 1 / a t
+
+/-- Exercise 1.21 in Chan and Tse.
+i(1) fits with back-of-the-book solution.
+(Unfortunately `v` and `i` are denoted `v a` and `i a` since they depend on `a`.)
+-/
+lemma chan_tse_exe_1_21 (h : ∀ t, v a t = 20 / (20 + t)) {t : ℝ} (ht : 0 ≠ 20 + t):
+    i a (t+1) = 1 / (20 + t) := by
+  simp [i, i₂]
+  simp [v] at h
+  have ha (t) : a t = (20 + t) / 20 := by
+    have ht := h t
+    rw [← inv_inv (a t)]
+    rw [ht]
+    field_simp
+  rw [ha (t+1), ha t]
+  field_simp
+
+lemma chan_tse_exe_1_33 (h : ∀ t, a t = 1 / (1 - 0.01 * t)) :
+    ∀ t, v a t = 1 - 0.01 * t := by
+  intro t
+  unfold v
+  rw [h]
+  field_simp
+
+lemma chan_tse_exe_1_34 (h : ∀ t, A A₀ a t = t^2 + 2*t + 4) :
+    δ a 5 = 4 / 13 := by
+  unfold δ
+  unfold A at h
+  have hA₀ : A₀ ≠ 0 := by
+    intro hc
+    subst hc
+    simp at h
+    specialize h 0
+    simp at h
+  have h₅ : a 5 ≠ 0 := by
+    specialize h 5
+    intro hc
+    rw [hc] at h
+    simp at h
+    linarith
+  have : a = fun t => A₀⁻¹ * (t ^ 2 + 2 * t + 4) := by
+    ext t
+    field_simp
+    rw [h]
+  suffices deriv a 5 = a 5 * (4 / 13) by
+    rw [this]
+    generalize a 5 = α at *
+    ring_nf
+    rw [mul_comm]
+    have : α * α⁻¹ = 1 := by
+      field_simp
+    rw [this]
+    field_simp
+  rw [this]
+  rw [deriv_const_mul]
+  simp
+  rw [mul_assoc]
+  congr
+  conv =>
+    left
+    left
+    change (fun y => y ^ 2) + fun y => 2 * y
+  rw [deriv_add]
+  simp
+  rw [deriv_const_mul]
+  simp
+  linarith
+  simp
+  apply DifferentiableAt.pow
+  simp
+  apply DifferentiableAt.const_mul
+  simp
+  apply DifferentiableAt.add
+  apply DifferentiableAt.add
+  apply DifferentiableAt.pow
+  simp
+  apply DifferentiableAt.const_mul (by simp)
+  simp
+
+lemma chan_tse_exe_1_36 (h : ∀ t, δ a t = 1 / (10 * (1 + t) ^ 3))
+    (h₀ : A₀ = 100)
+    (h₁_₂₆ : ∀ t, a t = rexp (∫ s in 0..t, δ a s)) -- this should be proved instead
+    :
+    0.064 < I A₀ a 5 ∧ I A₀ a 5 < 0.065 := by
+  unfold I
+  rw [h₁_₂₆]
+  rw [h₁_₂₆]
+  simp_rw [h]
+  rw [h₀]
+  rw [show (5:ℝ)-1=4 by linarith]
+  have : ∫ (s : ℝ) in 0..5, 1 / (10 * (1 + s) ^ 3) = (1 / 20) * (1 - 1 / 36) := by
+    sorry
+  rw [this]
+  have : ∫ (s : ℝ) in 0..4, 1 / (10 * (1 + s) ^ 3) = (1 / 20) * (1 - 1 / 25) := by
+    sorry
+  rw [this]
+  -- Google says this is (approximately) correct
+  have : ((1:ℝ) / 20) * (1 - 1 / 36) = 7 / 144 := by
+    linarith
+  rw [this]
+  have : ((1:ℝ) / 20) * (1 - 1 / 25) = 6 / 125 := by
+    linarith
+  rw [this]
+  constructor
+  · suffices  64e-5 < (rexp (7 / 144) - rexp (6 / 125)) by
+      linarith
+    have : 64e-5 < Float.exp (7 / 144) - Float.exp (6 / 125) := by native_decide
+    sorry
+  · suffices (rexp (7 / 144) - rexp (6 / 125)) < 65e-5 by
+      linarith
+    -- use something like 1 + x < e^x
+    -- and e^x < 1 + 1.05 x for small x?
+    have : Float.exp (7 / 144) - Float.exp (6 / 125) < 65e-5 := by
+      native_decide
+
+    sorry
 
 /-- The effective discount rate function `d(t)` is defined so that
 `a (t - 1) = (1 - d t) * a t`.
@@ -322,7 +475,7 @@ lemma principal_zero (a : ℝ → ℝ) : interest.A 0 a = fun _ => 0 := by
 lemma effective_interest_rate_def (a : ℝ → ℝ) (t : ℝ)
     (h : a (t - 1) ≠ 0) :
     a t = (1 + interest.i a t) * a (t - 1) := by
-  field_simp [interest.i]
+  field_simp [interest.i₂,interest.i]
 
 lemma effective_discount_rate_def (a : ℝ → ℝ) (t : ℝ)
     (h : a t ≠ 0) :
@@ -332,7 +485,7 @@ lemma effective_discount_rate_def (a : ℝ → ℝ) (t : ℝ)
 /-- This lemma can replace `h1_10₁` in `chan_tse_1_3`. -/
 lemma h1_10₁ {a : ℝ → ℝ}
   {t : ℝ} (h : a (t - 1) ≠ 0) (A₀: ℝ) : interest.I A₀ a t = interest.A A₀ a (t - 1) * interest.i a t := by
-  unfold interest.I interest.A interest.i
+  unfold interest.I interest.A interest.i interest.i₂
   field_simp
   ring_nf
 
@@ -594,6 +747,33 @@ effective interest rate `i` is the nominal interest with
 `m = ∞` times a year compounding frequency.
 -/
 noncomputable def Real.force (i : ℝ) := log (1 + i)
+
+/-- Verify that interest.δ are Real.force cohere:
+if the accumulation function is t ↦ (1+i)^t then δ = force i
+ -/
+example {t i : ℝ} (hi : 0 < 1 + i) :
+  interest.δ (fun t => (1 + i)^t) t = i.force := by
+  unfold interest.δ force
+  simp
+  have h₀ : (1 + i)^t ≠ 0 := by
+    apply ne_of_gt
+    apply rpow_pos_of_pos hi
+  rw [← eq_div_of_mul_eq h₀]
+  simp_rw [rpow_def_of_pos hi]
+  have : (fun t ↦ rexp (log (1 + i) * t)) = rexp ∘ fun t ↦ (log (1 + i) * t) := by
+      ext t
+      simp only [Function.comp_apply]
+  rw [this]
+  rw [deriv_comp]
+  · rw [Real.deriv_exp]
+    rw [deriv_const_mul]
+    · simp
+      nth_rw 1 [mul_comm]
+    · simp
+  · apply DifferentiableAt.exp (by simp)
+  · exact DifferentiableAt.mul
+      (DifferentiableAt.log (by simp) (by linarith)) (by simp)
+
 noncomputable def Real.effIntTop (i : ℝ) := rexp i - 1
 
 lemma force_effIntTop (i : ℝ) (hi : 0 < 1 + i) : i.force.effIntTop = i := by
