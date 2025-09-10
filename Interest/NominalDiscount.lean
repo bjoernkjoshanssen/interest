@@ -423,11 +423,14 @@ lemma chan_tse_exe_1_34 (h : ∀ t, A A₀ a t = t^2 + 2*t + 4) :
   apply DifferentiableAt.const_mul (by simp)
   simp
 
+
 lemma chan_tse_exe_1_36 (h : ∀ t, δ a t = 1 / (10 * (1 + t) ^ 3))
     (h₀ : A₀ = 100)
     (h₁_₂₆ : ∀ t, a t = rexp (∫ s in 0..t, δ a s)) -- this should be proved instead
     :
-    0.064 < I A₀ a 5 ∧ I A₀ a 5 < 0.065 := by
+    I A₀ a 5 = (Real.exp (7 / 144) -  Real.exp (6 / 125)) * 100
+            ∧ (Float.exp (7 / 144) - Float.exp (6 / 125)) * 100 < 65e-3
+            ∧ (Float.exp (7 / 144) - Float.exp (6 / 125)) * 100 > 64e-3 := by
   unfold I
   rw [h₁_₂₆]
   rw [h₁_₂₆]
@@ -440,7 +443,6 @@ lemma chan_tse_exe_1_36 (h : ∀ t, δ a t = 1 / (10 * (1 + t) ^ 3))
   have : ∫ (s : ℝ) in 0..4, 1 / (10 * (1 + s) ^ 3) = (1 / 20) * (1 - 1 / 25) := by
     sorry
   rw [this]
-  -- Google says this is (approximately) correct
   have : ((1:ℝ) / 20) * (1 - 1 / 36) = 7 / 144 := by
     linarith
   rw [this]
@@ -448,18 +450,10 @@ lemma chan_tse_exe_1_36 (h : ∀ t, δ a t = 1 / (10 * (1 + t) ^ 3))
     linarith
   rw [this]
   constructor
-  · suffices  64e-5 < (rexp (7 / 144) - rexp (6 / 125)) by
-      linarith
-    have : 64e-5 < Float.exp (7 / 144) - Float.exp (6 / 125) := by native_decide
-    sorry
-  · suffices (rexp (7 / 144) - rexp (6 / 125)) < 65e-5 by
-      linarith
-    -- use something like 1 + x < e^x
-    -- and e^x < 1 + 1.05 x for small x?
-    have : Float.exp (7 / 144) - Float.exp (6 / 125) < 65e-5 := by
-      native_decide
-
-    sorry
+  · rfl
+  · constructor
+    · native_decide
+    · native_decide
 
 /-- The effective discount rate function `d(t)` is defined so that
 `a (t - 1) = (1 - d t) * a t`.
@@ -747,6 +741,157 @@ effective interest rate `i` is the nominal interest with
 `m = ∞` times a year compounding frequency.
 -/
 noncomputable def Real.force (i : ℝ) := log (1 + i)
+
+
+
+lemma antitone_of_deriv_neg {f : ℝ → ℝ} (hc :  ContinuousOn f (Set.Ici 1))
+    (h₀ : ∀ x > 1, deriv f x < 0) : StrictAntiOn f (Set.Ici 1) := by
+        apply strictAntiOn_of_deriv_neg
+        exact convex_Ici 1
+        exact hc
+        simp
+        tauto
+
+lemma anti' (f : ℝ → ℝ) (z  : ℝ) (hc :  ContinuousOn f (Set.Ici 1))
+    (h₀ : ∀ x > 1, deriv f x < 0) (a : ℝ) (ha : 1 ≤ z ∧ z < a) :
+    f a < f z := by
+    have := @antitone_of_deriv_neg f hc h₀ z (by simp;linarith) a
+    apply this;simp;linarith;tauto
+
+lemma g₂ : ∀ x > 1, deriv (fun α => 2 * log α + 1 / α - α) x < 0 := by
+    intro x hx
+    conv =>
+        left
+        left
+        change (fun α ↦ 2 * log α) + (fun α ↦ 1 / α) - (fun α ↦ α)
+    rw [deriv_sub]
+    · simp
+      rw [deriv_add]
+      · rw [deriv_const_mul]
+        · rw [deriv_inv]
+          rw [deriv_log]
+          simp
+          ring_nf
+          suffices 0 < (x⁻¹ - 1) ^ 2 by linarith
+          suffices x⁻¹ - 1 ≠ 0 by exact pow_two_pos_of_ne_zero this
+          field_simp
+          linarith
+        · refine differentiableAt_log ?_
+          linarith
+      · refine DifferentiableAt.fun_comp' x ?_ ?_
+        apply DifferentiableAt.const_mul
+        simp
+        refine differentiableAt_log ?_
+        linarith
+      refine differentiableAt_inv ?_
+      linarith
+    · refine DifferentiableAt.add ?_ ?_
+
+      apply DifferentiableAt.const_mul
+      refine differentiableAt_log ?_
+      linarith
+      refine differentiableAt_of_deriv_ne_zero ?_
+      simp
+      linarith
+    · simp
+
+/--
+Assuming `0 < i`,
+actually `d < Real.force i` holds but
+that seems to require a proof like `anti'` above.
+If `i=0` then `d=0` and `Real.force i = 0` too.
+-/
+theorem advance_d {i d : ℝ} (hi : 0 < 1 + i)
+    (h : (1 - d) * (1 + i) = 1) :
+    d ≤ Real.force i := by
+  unfold force
+  have h : 0 < 1 + i := by linarith
+  have : d = 1 - 1 / (1 + i) := by
+    field_simp
+    linarith
+  rw [this]
+  have g₀ := @Real.one_sub_inv_le_log_of_pos (1 + i) h
+  generalize 1 +i = x at *
+  simp at g₀ ⊢
+  exact g₀
+
+/-- For simple interest, the force is *not* above the discount. -/
+theorem advance_d_general (a : ℝ → ℝ) (r : ℝ)
+    (ha : a = fun t => 1 + r * t) (hr : r = 1)
+    :
+    ¬ interest.d a ≤ interest.δ (interest.i a) := by
+  rw [ha]
+  unfold interest.d interest.δ interest.i interest.i₂
+  intro hc
+  specialize hc 2
+  field_simp at hc
+  have : (fun x ↦ (1 + r * x) / (1 + r * (x - 1)))
+    = (fun x ↦ (1 + r * x)) / fun x => (1 + r * (x - 1)) := by ext;simp
+  rw [this] at hc
+  rw [deriv_div] at hc
+  simp at hc
+  rw [deriv_const_mul] at hc
+  rw [hr] at hc
+  simp at hc
+  field_simp at hc
+  ring_nf at hc
+  revert hc
+  simp
+  linarith
+  simp
+  simp
+  refine differentiableAt_of_deriv_ne_zero ?_
+  rw [deriv_const_mul]
+  rw [hr]
+  simp
+  simp
+  simp
+  ring_nf
+  rw [hr]
+  field_simp
+
+theorem advanced {i d : ℝ} (hi : 0 < i)
+  (h : (1 - d) * (1 + i) = 1) :
+  Real.force i < (i + d) / 2 := by
+  have h : 0 < 1 + i := by linarith
+  have h₀ : 1 < 1 + i := by linarith
+  unfold force
+  have : d = 1 - 1 / (1 + i) := by
+    field_simp
+    linarith
+  rw [this]
+  rw [add_sub_assoc']
+  have g₁ := @Real.log_le_sub_one_of_pos (1 + i) h
+  nth_rw 2 [add_comm]
+  generalize 1 + i = α at *
+  have g₃ :  (fun α ↦ 2 * log α + 1 / α - α) α < (fun α ↦ 2 * log α + 1 / α - α) 1 := by
+    have g₄ := @anti' (fun α => 2 * log α + 1 / α - α) (h₀ := g₂) 1 (a := α)
+        (by
+            refine ContinuousOn.add ?_ ?_
+            · refine ContinuousOn.add ?_ ?_
+              · refine Continuous.comp_continuousOn' ?_ ?_
+                exact continuous_mul_left 2
+                refine continuousOn_of_forall_continuousAt ?_
+                simp
+                intros
+                linarith
+              · show ContinuousOn (fun x => 1 / x) _
+                apply ContinuousOn.div
+                exact continuousOn_const
+                intro x hx
+                refine ContinuousWithinAt.star ?_
+                apply Continuous.continuousWithinAt
+                exact continuous_id'
+                intro x hx
+                simp at hx
+                linarith
+            exact continuousOn_neg
+        ) (⟨by linarith,by linarith⟩)
+    tauto
+  simp at g₃
+  suffices 2 * log α + 1 / α - α < 0 by linarith
+  simp
+  exact g₃
 
 /-- Verify that interest.δ are Real.force cohere:
 if the accumulation function is t ↦ (1+i)^t then δ = force i
