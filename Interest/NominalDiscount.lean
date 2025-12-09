@@ -15,6 +15,13 @@ import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Base
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 
+import Batteries.Data.Rat.Float
+import Mathlib.Analysis.Calculus.Deriv.Basic
+import Mathlib.Analysis.SpecialFunctions.Exp
+import Mathlib.Data.Complex.ExponentialBounds
+import Mathlib.Analysis.ODE.Gronwall
+
+
 /-!
 # Chan & Tse Exercise 1.1
 -/
@@ -78,8 +85,7 @@ lemma exercise_1_2_chan_tse_pos {u x : ℝ} (hu : -1 < u) (hu₀ : u ≠ 0) (hx 
     rw [log_div, log_div]
     all_goals linarith
   rw [this]
-  have : x / (x + u) = 1 - (u / (x + u)) := by
-    field_simp
+  have : x / (x + u) = 1 - (u / (x + u)) := by field_simp
   rw [this]
   have : 1 - u / (x + u) > 0 := by
     field_simp
@@ -225,17 +231,11 @@ theorem rational_exponent_interest_le_integer {ε m n k : ℝ} (hε : 0 < ε) (h
     refine rpow_add' ?_ ?_
     positivity
     apply ne_of_gt
-    apply add_pos
-    tauto
-    simp
-    linarith
+    positivity
   rw [this]
   suffices  (1 + ε / m) ^ (1 / k) < (1 + ε / (k * m)) ^ 1 by
     refine (mul_lt_mul_left ?_).mpr this
-    refine rpow_pos_of_pos ?_ n
-    apply add_pos
-    simp
-    apply div_pos <;> tauto
+    positivity
   have hr {a b c : ℝ}
     (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)
     (h : a ^ (c) < b ^ (c)) : a < b := by
@@ -244,28 +244,19 @@ theorem rational_exponent_interest_le_integer {ε m n k : ℝ} (hε : 0 < ε) (h
         (by tauto)).mp h
   suffices  ((1 + ε / m) ^ (1 / k)) ^ k < ((1 + ε / (k * m)) ^ 1) ^ k by
     apply hr
-    · apply rpow_pos_of_pos
-      apply add_pos (by simp)
-      apply div_pos <;> tauto
-    · simp
-      apply add_pos
-      · simp
-      · apply div_pos
-        · tauto
-        · apply mul_pos <;> linarith
-    · show 0 < k
-      linarith
+    · positivity
+    · positivity
+    · show 0 < k; linarith
     exact this
   have :  ((1 + ε / m) ^ (1 / k)) ^ k
     =  (1 + ε / m) ^ ((1 / k) * k) := by
       rw [rpow_mul]
-      apply add_nonneg (by simp)
-      apply div_nonneg <;> linarith
+      positivity
   rw [this]
   simp
   rw [inv_mul_cancel₀ (by linarith)]
   rw [div_mul_eq_div_div_swap]
-  have hu : 0 < ε / m := by apply div_pos;tauto;tauto
+  have hu : 0 < ε / m := by positivity
   generalize ε / m = u at *
   let f : ℝ → ℝ := fun t => (1 + u / t) ^ t
   suffices f 1 < f k by
@@ -282,6 +273,33 @@ lemma chan_tse_exercise_1_2 (ε : ℝ) (hε : 0 < ε) :
   (1 + ε/4) ^ ((8:ℝ) + 1/3) <
   (1 + ε/4) ^ (8:ℝ) * (1 + ε/(3 * 4)) ^ 1 := by
     exact @rational_exponent_interest_le_integer ε 4 8 3 hε (by simp) (by simp) (by simp)
+
+namespace force
+
+/-! Here we develop interest theory, taking the force of interest δ as basic. -/
+
+variable (δ : ℝ → ℝ)
+
+noncomputable def a_sub (t τ : ℝ) := Real.exp (∫ (s : ℝ) in t..(t + τ), δ s)
+
+noncomputable def a (t : ℝ) := a_sub δ 0 t
+
+-- Principal
+variable (A₀ : ℝ)
+
+-- Amount function
+noncomputable def A : ℝ → ℝ := fun t => a δ t * A₀
+
+end force
+
+theorem a_zero (δ : ℝ → ℝ) : force.a_sub δ 0 0 = 1 := by
+  unfold force.a_sub
+  simp
+
+/-- In name space `interest`, a(0)=1 was not automatic but here it is: -/
+theorem a_zero' (δ : ℝ → ℝ) : force.a δ 0 = 1 := by
+  unfold force.a force.a_sub
+  simp
 
 namespace interest
 
@@ -300,7 +318,7 @@ def A : ℝ → ℝ := fun t => a t * A₀ -- BAD BECAUSE IT MAKES a 0 = 1 NOT A
 
 lemma A_def (t : ℝ) : A A₀ a t = a t * A₀ := by rfl
 
--- Interest function. Probably beset to define it directly in terms of a, A₀
+-- Interest function. Probably best to define it directly in terms of a, A₀
 def I : ℝ → ℝ := fun t => (a t - a (t - 1)) * A₀
 
 /-- Effective interest over an interval, not annualized.
@@ -322,21 +340,36 @@ Equation (1.13) in Chan & Tse.
 -/
 noncomputable def i₂ann : ℝ → ℝ → ℝ := fun u v => (a v / a u) ^ (1 / (v - u)) - 1
 
-lemma i₂ann_def (u v : ℝ) (h : u < v)
-    (hu : 0 < a u)
-    (hv : 0 ≤ a v) :
+-- Multiple forward rate
+noncomputable def iF : ℝ → ℝ → ℝ := fun t τ => i₂ann a t (t + τ)
+
+-- Assume c = 1 and b = 2
+example (a b : ℝ) : 27 * a * 2
+  < a ^ 3 + 2 ^ 3 + 1 + 6 * a * 2
+  + 3 * a^2 * 2
+  + 3 * a^2
+  + 3 * 2^2 * a
+  + 3 * 2^2
+  + 3 * a
+  + 3 * 2
+  := by
+  ring_nf
+  suffices  (a - 1) * 27 < a ^ 2 * (9 + a) by linarith
+  by_cases H : a = 4
+  subst H
+  linarith
+  sorry
+
+
+lemma i₂ann_def {u v : ℝ} (h : u < v) (hu : 0 < a u) (hv : 0 ≤ a v) :
     a v = a u * (1 + i₂ann a u v) ^ (v - u) := by
-  unfold i₂ann
-  field_simp
+  field_simp [i₂ann]
   rw [← rpow_mul]
-  simp
-  have : (v - u)⁻¹ * (v - u) = 1 := by
-    refine inv_mul_cancel₀ ?_
-    linarith
-  rw [this]
-  simp
-  field_simp
-  apply div_nonneg <;> linarith
+  · simp
+    rw [inv_mul_cancel₀]
+    · field_simp
+    · linarith
+  positivity
 
 /-- The effective interest rate function `i(t)` is defined so that
 `a t = (1 + i t) * a (t - 1)`.
@@ -423,14 +456,316 @@ lemma chan_tse_exe_1_34 (h : ∀ t, A A₀ a t = t^2 + 2*t + 4) :
   apply DifferentiableAt.const_mul (by simp)
   simp
 
+-- example (x y c d : ℝ) (h₀ : x^2+y-3=0) (h₁: x+(1/2)*y^2-3/2=0) : x = c ∧ y = d := by
+--   sorry
+-- f = (x^2+y-3, x+(1/2)y^2-3/2), g = (x^2-1,y^2-1)
+-- h = γ (1-t) g(x,y) + t f(x,y), γ random in ℂ, t in [0,1]
 
-lemma chan_tse_exe_1_36 (h : ∀ t, δ a t = 1 / (10 * (1 + t) ^ 3))
-    (h₀ : A₀ = 100)
-    (h₁_₂₆ : ∀ t, a t = rexp (∫ s in 0..t, δ a s)) -- this should be proved instead
+lemma eq_of_deriv_eq (f g : ℝ → ℝ) (hf : Differentiable ℝ f)
+    (hg : Differentiable ℝ g)
+    (h : deriv f = deriv g) (h₀ : f 0 = g 0) : f = g := by
+    exact @eq_of_fderiv_eq ℝ ℝ _ _ _ _ ℝ _ _ f g hf hg (by
+        intro x
+        rw [← deriv_fderiv]
+        rw [← deriv_fderiv]
+        simp
+        rw [h]) 0 h₀
+
+
+open scoped Real
+
+theorem solutions_of_deriv_eq_self {f : ℝ → ℝ} (hf : Differentiable ℝ f)
+  (h : ∀ x, deriv f x = f x) :
+  ∃ c : ℝ, ∀ x, f x = c * Real.exp x := by
+  let g := fun x => f x * Real.exp (-x)
+  have : ∀ x, deriv g x = (deriv f x - f x) * Real.exp (-x) := by
+    intro x
+    calc
+      deriv g x
+        = deriv f x * Real.exp (-x) + f x * deriv (fun y => Real.exp (-y)) x := by
+          exact (deriv_mul (hf x) (by
+            refine DifferentiableAt.exp ?_
+            refine Differentiable.differentiableAt ?_
+            exact differentiable_neg))
+      _ = (deriv f x - f x) * Real.exp (-x) := by
+          conv =>
+            left
+            right
+            right
+            change deriv (rexp ∘ fun y ↦ (-y)) x
+          rw [deriv_comp]
+          rw [Real.deriv_exp]
+          simp
+          linarith
+          exact differentiableAt_exp
+          refine differentiableAt_of_deriv_ne_zero ?_
+          rw [deriv_neg]
+          simp
+  have g_deriv_zero : ∀ x, deriv g x = 0 := fun x => by
+    rw [this]
+    rw [h]
+    simp
+  have : ∃ c, ∀ x, g x = c := by
+    use g 0
+    intro x
+    apply is_const_of_deriv_eq_zero
+    unfold g
+    refine Differentiable.fun_mul hf ?_
+    refine Differentiable.exp ?_
+    exact differentiable_neg
+    exact g_deriv_zero
+  obtain ⟨c, hc⟩ := this
+  use c
+  intro x
+  calc f x = g x * Real.exp x := by
+        unfold g;rw [mul_assoc]
+        rw [← exp_add]
+        simp
+    _   = c * Real.exp x := by rw [hc]
+
+
+example (a δ : ℝ → ℝ) (ha : Differentiable ℝ a) (hδ : Continuous δ)
+    (h : deriv a = a * δ) :
+    ∃ c, a = fun t => c * rexp (∫ s in 0..t, δ s) := by
+  have := @solutions_of_deriv_eq_self
+  sorry
+/-
+algebraic statistics for s4cs:
+binomial distribution
+(p₀, p₁, p₂) = (P(X=0),...)
+p₀^2 = 4p₀p₂
+and p₀ + p₁ + p₂ = 1
+implies that there exist parameters
+
+-/
+
+
+example : (1 : Float) + (2 : Float) ≤ (3 : Float) := by native_decide
+example : (1 : Float) + (2 : Float) ≥ (3 : Float) := by native_decide
+example : (1 : Float) + (2 : Float) == (3 : Float) := by
+        native_decide -- doesn't work
+
+
+lemma edist_mul {c : ℝ} (hδ : 0 ≤ c) (x y : ℝ) :
+    edist (c * x) (c * y) = ENNReal.ofReal c * edist x y := by
+  rw [edist_dist]
+  rw [edist_dist]
+  have : dist (c * x) (c * y) =
+    (c) * dist x y := by
+    have hδ : |c| = c := abs_eq_self.mpr hδ
+    generalize c = α at *
+    show |α * x - α * y| = α * |x - y|
+    suffices |α * x + α * -y| = α * |x + -y| by
+      convert this using 2
+      ring_nf
+    generalize -y = z
+    have : α * x + α * z = α * (x + z) := by ring_nf
+    rw [this]
+    generalize x + z = w
+    nth_rw 2 [← hδ]
+    exact abs_mul α w
+  rw [this]
+  refine ENNReal.ofReal_mul hδ
+
+
+
+/-- The equation `a(t) = e^(∫^t δ(s) ds)`. -/
+lemma general_force (a : ℝ → ℝ)
+    (hnz : ∀ (t : ℝ), a t ≠ 0) (hdiff : Differentiable ℝ a) (ha₀ : a 0 = 1)
+    {n : ℝ} (hn : 0 ≤ n)
+    (hcontδ: ContinuousOn (δ a) (Set.Ici 0))
+    (hδ : ∀ t ≥ 0, 0 < δ a t ∧ δ a t ≤ 1) -- ideally should generalize to `δ a t ≤ K`.
+    (hc₀ : ContinuousAt (δ a) 0)
+    (hme: StronglyMeasurableAtFilter (δ a) (nhds 0) MeasureTheory.volume) -- should follow from hc₀?
+    :
+    Set.EqOn (fun t ↦ rexp (∫ (s : ℝ) in 0..t, δ a s)) a (Set.Icc 0 n) := by
+  have hcont : Continuous a := Differentiable.continuous hdiff
+  have hcool (t) (ht: 0 ≤ t) :
+    IntervalIntegrable (δ a) MeasureTheory.volume 0 t := by
+      apply ContinuousOn.intervalIntegrable
+      intro x hx
+      simp [Set.uIcc] at hx ⊢
+      have hm₀: min 0 t = 0 := by apply min_eq_left ht
+      rw [hm₀]
+      have hm₁: max 0 t = t := by apply max_eq_right ht
+      rw [hm₁]
+      have := hcontδ x (by
+        simp
+        cases hx.1 <;> linarith)
+      have hs : Set.Icc 0 t ⊆ Set.Ici 0 := by
+        unfold Set.Icc Set.Ici
+        simp
+        intros
+        trivial
+      clear hx hm₀ hm₁ ht hcont hδ hcontδ hn n ha₀ hdiff hnz
+      generalize δ a = f at *
+      clear a
+      apply ContinuousWithinAt.mono this hs
+  have hlip : ∀ t ∈ Set.Ico 0 n, LipschitzOnWith 1 ((fun t x ↦ x * δ a t) t) ((fun x ↦ Set.univ) t) := by
+      simp
+      intro t ht hnt
+      have h₀ : 0 ≤ δ a t := le_of_lt (hδ t ht).1
+      have h₁ : δ a t ≤ 1 := (hδ t ht).2
+      intro x y
+      simp
+      nth_rw 1 [mul_comm]
+      nth_rw 2 [mul_comm]
+      rw [edist_mul h₀ _ _]
+      calc _ ≤ 1 * edist x y := mul_le_mul_right' (by norm_cast at *) (edist x y)
+           _ ≤ _ := by simp
+  have hcontexp : ContinuousOn (fun t ↦ rexp (∫ (s : ℝ) in 0..t, δ a s)) (Set.Icc 0 n) := by
+        conv =>
+          left
+          change rexp ∘ fun t ↦ (∫ (s : ℝ) in 0..t, δ a s)
+        refine continuous_exp.comp_continuousOn ?_
+
+        apply (intervalIntegral.continuousOn_primitive ((intervalIntegrable_iff_integrableOn_Icc_of_le hn).mp (hcool _ hn))).congr
+        intro x hx
+        simp [intervalIntegral] at hx ⊢
+        have : Set.Ioc x 0 = ∅ := by ext;simp;intro;linarith
+        rw [this]
+        simp
+  have hhas :  ∀ t ∈ Set.Ico 0 n,
+      HasDerivWithinAt (fun t ↦ rexp (∫ (s : ℝ) in 0..t, δ a s))
+      ((fun t x ↦ x * δ a t) t ((fun t ↦ rexp (∫ (s : ℝ) in 0..t, δ a s)) t)) (Set.Ici t) t := by
+          intro t ht
+          simp at ht
+          have hii : IntervalIntegrable (δ a) MeasureTheory.volume 0 t := by
+            apply hcool _ ht.1
+          have hδat : δ a t ≠ 0 := by
+            specialize hδ t ht.1
+            linarith
+          have hc : ContinuousAt (δ a) t := by
+            by_cases H : t = 0
+            · subst t
+              exact hc₀
+            specialize hcontδ t (by simp;exact ht.1)
+            have : t ∈ Set.Ici 0 := ht.1
+            generalize δ a = f at *
+            have h₀ : Set.Ici (0:ℝ) ∈ nhds t := by
+              refine Ici_mem_nhds ?_
+              have := ht.1
+              by_contra H₀
+              apply H
+              linarith
+            generalize Set.Ici (0:ℝ) = A at *
+            unfold ContinuousWithinAt at hcontδ
+            unfold ContinuousAt
+            convert hcontδ
+            ext s
+            constructor
+            · intro h
+              revert h
+              exact fun h ↦ mem_nhdsWithin_of_mem_nhds h
+            · exact fun a ↦ nhds_of_nhdsWithin_of_nhds h₀ a
+          have hs : StronglyMeasurableAtFilter (δ a) (nhds t) MeasureTheory.volume := by
+            by_cases H₀ : t = 0
+            · subst t
+              exact hme
+            apply ContinuousOn.stronglyMeasurableAtFilter (s := Set.Ioi 0)
+            · exact isOpen_Ioi
+            · apply ContinuousOn.mono hcontδ
+              intro;simp;intro;linarith
+            simp
+            by_contra H
+            apply H₀
+            linarith
+          generalize δ a = f at *
+          have : (fun t ↦ rexp (∫ (s : ℝ) in 0..t, f s))
+            = rexp ∘ (fun t ↦ (∫ (s : ℝ) in 0..t, f s)) := by ext;simp
+          rw [this]
+          refine HasDerivAt.hasDerivWithinAt ?_
+          simp
+          apply @HasDerivAt.comp (h₂ := rexp)
+            (h := fun t ↦ ∫ (s : ℝ) in 0..t, f s) (h' := f t)
+            (h₂' := rexp (∫ (s : ℝ) in 0..t, f s))
+            (x := t) _
+          generalize (∫ (s : ℝ) in 0..t, f s) = q
+          exact Real.hasDerivAt_exp q
+          have := @intervalIntegral.deriv_integral_right (f := f)
+            (a := 0) _ _ _ _ t hii hs hc
+          rw [← this]
+          refine DifferentiableAt.hasDerivAt ?_
+          refine differentiableAt_of_deriv_ne_zero ?_ -- not so good as δ=0 should be allowed
+          rw [intervalIntegral.deriv_integral_right hii hs hc]
+          exact hδat
+
+  exact @ODE_solution_unique_of_mem_Icc_right ℝ _ _ (λ t x ↦ x * δ a t) -- fix
+    (f := fun t => rexp (∫ s in 0..t, δ a s)) (g := a)
+    (fun _ => Set.univ)
+    1 0 n
+    hlip hcontexp hhas (by simp) (Continuous.continuousOn hcont)
+      (by
+        simp
+        intro t ht htn
+        unfold δ
+        rw [mul_comm]
+        have h₀ : deriv a t / a t * a t = deriv a t := div_mul_cancel₀ _ (hnz t)
+        rw [h₀]
+        refine HasDerivAt.hasDerivWithinAt ?_
+        exact DifferentiableAt.hasDerivAt (hdiff t)) (by simp) (by simp;rw [ha₀])
+
+
+lemma this_is_proved_instead₀ (a : ℝ → ℝ) (h : δ a = fun t ↦ 1 / (10 * (1 + t) ^ 3))
+  (hnz : ∀ (t : ℝ), a t ≠ 0) (hdiff : Differentiable ℝ a) (ha₀ : a 0 = 1)
+  (n : ℝ) (hn : 0 ≤ n) :
+  Set.EqOn (fun t ↦ rexp (∫ (s : ℝ) in 0..t, δ a s)) a (Set.Icc 0 n) := by
+  apply general_force _ hnz hdiff ha₀ hn
+    (by
+      rw [h]
+      simp
+      refine (((continuous_add_left 1).continuousOn.pow 3).inv₀ ?_).div_const 10
+      · intro x hx hcontra
+        simp at hcontra hx
+        have : x = -1 := by linarith
+        subst this
+        simp at hx
+        linarith) (by
+      intro t ht
+      constructor
+      · rw [h]
+        positivity
+      · rw [h]
+        have h₁₀ : 0 < 10 * (1 + t)^3 := by positivity
+        apply (div_le_one₀ h₁₀).mpr
+        have : 1 ≤ (1 + t) ^ 3 := one_le_pow₀ (by linarith)
+        linarith) (by
+      rw [h]
+      simp
+      apply ContinuousAt.mul
+      refine ContinuousAt.inv₀ ?_ ?_
+      refine ContinuousAt.pow ?_ 3
+      refine Continuous.continuousAt ?_
+      exact continuous_add_left 1
+      simp
+      exact continuousAt_const) (by
+            rw [h]
+            refine (MeasureTheory.StronglyMeasurable.const_mul ?_ 1).stronglyMeasurableAtFilter
+            exact (measurable_inv_iff.mpr <| measurable_const.mul <| (measurable_const_add 1).pow_const 3).stronglyMeasurable
+
+      )
+
+
+
+lemma this_is_proved_instead (a : ℝ → ℝ) (h : δ a = fun t ↦ 1 / (10 * (1 + t) ^ 3))
+  (hnz : ∀ (t : ℝ), a t ≠ 0) (hdiff : Differentiable ℝ a) (ha₀ : a 0 = 1) :
+  Set.EqOn (fun t ↦ rexp (∫ (s : ℝ) in 0..t, δ a s)) a (Set.Ici 0) := by
+  intro x hx
+  simp at hx
+  have := this_is_proved_instead₀ a h hnz hdiff ha₀ x hx
+  apply this
+  simp
+  exact hx
+
+lemma chan_tse_exe_1_36 (h : δ a = fun t => 1 / (10 * (1 + t) ^ 3))
+    (h₀ : A₀ = 100) (hcont : Continuous a) (hnz : ∀ t, a t ≠ 0)
+    (hdiff : Differentiable ℝ a) (ha₀ : a 0 = 1)
     :
     I A₀ a 5 = (Real.exp (7 / 144) -  Real.exp (6 / 125)) * 100
             ∧ (Float.exp (7 / 144) - Float.exp (6 / 125)) * 100 < 65e-3
             ∧ (Float.exp (7 / 144) - Float.exp (6 / 125)) * 100 > 64e-3 := by
+  have h₁_₂₆ : ∀ t ≥ 0, a t = rexp (∫ s in 0..t, δ a s) :=
+    fun _ ht => (this_is_proved_instead a h hnz hdiff ha₀ ht).symm
   unfold I
   rw [h₁_₂₆]
   rw [h₁_₂₆]
@@ -454,6 +789,38 @@ lemma chan_tse_exe_1_36 (h : ∀ t, δ a t = 1 / (10 * (1 + t) ^ 3))
   · constructor
     · native_decide
     · native_decide
+  · simp
+  · simp
+
+-- #eval (Float.exp ((7 / 144) - Float.exp (6 / 125)) * 100).toRat0
+-- #eval (Float.exp ((7 / 144) - Float.exp (6 / 125)) * 100).toString
+-- #eval (Float.exp ((7 / 144) - Float.exp (6 / 125)) * 100).repr 10
+-- #eval (Float.exp 600).toRat0
+-- 2251799813685248 = 2^51 (used with e^1)
+--  562949953421312 = 2^49 (used with e^2)
+--  140737488355328 = 2^47 (used with e^3 and Exercise 1.36)
+--   35184372088832 = 2^45 (used with e^5)
+--   17592186044416 = 2^44 (used with e^4 and e^6)
+--    2199023255552 = 2^40 (used with e^7)
+--    1099511627776 = 2^39 (used with e^8)
+--     549755813888 = 2^38 (used with e^9)
+--         33554432 = 2^25 (used with e^(19))
+--             1024 = 2^10 (used with e^(29))
+-- Lean thinks e^35 is not an integer but e^36 is :)
+-- e^700 is a huge integer too big for a tweet, e^800 == 0
+-- e^600 huge integer
+
+-- #eval Float.exp ((7 / 144) - Float.exp (6 / 125)) * 100 == 36.767365
+
+-- example : False := by
+--     -- have h₀ : (0 / 0 : Float) == 0 / 0 := rfl
+--     have h₀ : (0 / 0 : Float) = 0 / 0 := rfl
+--     have h₁ : (0 / 0 : Float) != 0 / 0 := by native_decide
+--     have h₁ : (0 / 0 : Float) != (0 / 0 : Float) := by native_decide
+--     have h₁ : ¬ (0 / 0 : Float) == 0 / 0 := by native_decide
+--     have (x : Float) : x == x := by sorry
+--     sorry
+-- Where 140737488355328 = 2^47
 
 /-- The effective discount rate function `d(t)` is defined so that
 `a (t - 1) = (1 - d t) * a t`.
@@ -482,6 +849,8 @@ lemma h1_10₁ {a : ℝ → ℝ}
   unfold interest.I interest.A interest.i interest.i₂
   field_simp
   ring_nf
+
+
 
 -- not needed
 -- lemma h1_10₂ {a : ℝ → ℝ} (A₀ t : ℝ) :
@@ -684,15 +1053,12 @@ lemma chan_tse_exercise_1_6_a₂ {a i : ℝ → ℝ}
   refine eq_div_of_mul_eq ?_ (id (Eq.symm this))
   apply ne_of_gt
   apply add_pos
-  apply log_pos
-  have : (2:ℝ) ^ 2 / 2 = 2 := by linarith
-  rw [this]
-  suffices 0 < rexp 1 by linarith
-  exact exp_pos 1
-  apply div_pos
-  refine rpow_pos_of_pos ?_ (3 / 10)
-  simp
-  simp
+  · apply log_pos
+    have : (2:ℝ) ^ 2 / 2 = 2 := by linarith
+    rw [this]
+    suffices 0 < rexp 1 by linarith
+    exact exp_pos 1
+  positivity
 
 /-- The subtlety here is whether
 to use t^2 or t^(2:ℝ). They are the same, but
@@ -709,17 +1075,17 @@ lemma chan_tse_exercise_1_6_b {a A I : ℝ → ℝ}
   nth_rw 2 [h1_1']
   rw [hA, h1_6, h1_6]
 
-/--
+/-
 a 0 = 1
 a 2 = (1 + i 1) (1 + i 2) = (1 + 1/100 + 1/200) ((1 + 1/100 + 2/200))  etc.
 -/
-lemma chan_tse_exercise_1_7 {a i : ℝ → ℝ} (c : ℝ)
-    (h1_10₃ : ∀ t, a t = (1 + i t) * a (t - 1))
-    (h1_1'' : a 0 = 1)
-    (h : ∀ t, i t = (1 / 100) + (1 / 200) * t) :
-    ∀ t, a t = c := by
-  intro t
-  sorry
+-- lemma chan_tse_exercise_1_7 {a i : ℝ → ℝ} (c : ℝ)
+--     (h1_10₃ : ∀ t, a t = (1 + i t) * a (t - 1))
+--     (h1_1'' : a 0 = 1)
+--     (h : ∀ t, i t = (1 / 100) + (1 / 200) * t) :
+--     ∀ t, a t = c := by
+--   intro t
+--   sorry
 
 /-
 
@@ -752,56 +1118,61 @@ lemma antitone_of_deriv_neg {f : ℝ → ℝ} (hc :  ContinuousOn f (Set.Ici 1))
         simp
         tauto
 
-lemma anti' (f : ℝ → ℝ) (z  : ℝ) (hc :  ContinuousOn f (Set.Ici 1))
+lemma antitone_of_deriv_neg' (f : ℝ → ℝ) (z  : ℝ) (hc :  ContinuousOn f (Set.Ici 1))
     (h₀ : ∀ x > 1, deriv f x < 0) (a : ℝ) (ha : 1 ≤ z ∧ z < a) :
     f a < f z := by
-    have := @antitone_of_deriv_neg f hc h₀ z (by simp;linarith) a
-    apply this;simp;linarith;tauto
+    apply @antitone_of_deriv_neg f hc h₀ z (ha.1) a
+    · exact le_trans ha.1 <| le_of_lt ha.2
+    · exact ha.2
 
-lemma g₂ : ∀ x > 1, deriv (fun α => 2 * log α + 1 / α - α) x < 0 := by
+-- #eval Float.log 2
+/-- Rule of 69.3: if a = fun t => (1+i)^t
+then
+a t = 2 * a 0
+when
+t = Real.log 2 / interest.δ a
+and also
+Float.log 2 = 0.693
+-/
+
+lemma force_lt_average_interest_discount_aux : ∀ x > 1, deriv (fun α => 2 * log α + 1 / α - α) x < 0 := by
     intro x hx
-    conv =>
-        left
-        left
-        change (fun α ↦ 2 * log α) + (fun α ↦ 1 / α) - (fun α ↦ α)
+    conv => left; left; change (fun α ↦ 2 * log α) + (fun α ↦ 1 / α) - (fun α ↦ α)
     rw [deriv_sub]
     · simp
       rw [deriv_add]
       · rw [deriv_const_mul]
-        · rw [deriv_inv]
-          rw [deriv_log]
+        · rw [deriv_inv, deriv_log]
           simp
           ring_nf
           suffices 0 < (x⁻¹ - 1) ^ 2 by linarith
-          suffices x⁻¹ - 1 ≠ 0 by exact pow_two_pos_of_ne_zero this
+          suffices x⁻¹ - 1 ≠ 0 by positivity
           field_simp
           linarith
         · refine differentiableAt_log ?_
           linarith
       · refine DifferentiableAt.fun_comp' x ?_ ?_
-        apply DifferentiableAt.const_mul
-        simp
-        refine differentiableAt_log ?_
-        linarith
+        · apply DifferentiableAt.const_mul (by simp)
+        · refine differentiableAt_log (by linarith)
       refine differentiableAt_inv ?_
       linarith
     · refine DifferentiableAt.add ?_ ?_
 
       apply DifferentiableAt.const_mul
-      refine differentiableAt_log ?_
-      linarith
+      refine differentiableAt_log (by linarith)
       refine differentiableAt_of_deriv_ne_zero ?_
       simp
       linarith
     · simp
 
 /--
-Assuming `0 < i`,
-actually `d < Real.force i` holds but
+This result could be strengthened:
+assuming `0 < i`,
+actually `d < Real.force i` holds, but
 that seems to require a proof like `anti'` above.
 If `i=0` then `d=0` and `Real.force i = 0` too.
 -/
-theorem advance_d {i d : ℝ} (hi : 0 < 1 + i)
+theorem discount_le_force {i d : ℝ} (hi : 0 < 1 + i)
     (h : (1 - d) * (1 + i) = 1) :
     d ≤ Real.force i := by
   unfold force
@@ -811,46 +1182,77 @@ theorem advance_d {i d : ℝ} (hi : 0 < 1 + i)
     linarith
   rw [this]
   have g₀ := @Real.one_sub_inv_le_log_of_pos (1 + i) h
-  generalize 1 +i = x at *
   simp at g₀ ⊢
   exact g₀
 
-/-- For simple interest, the force is *not* above the discount. -/
-theorem advance_d_general (a : ℝ → ℝ) (r : ℝ)
-    (ha : a = fun t => 1 + r * t) (hr : r = 1)
-    :
-    ¬ interest.d a ≤ interest.δ (interest.i a) := by
-  rw [ha]
-  unfold interest.d interest.δ interest.i interest.i₂
-  intro hc
-  specialize hc 2
-  field_simp at hc
-  have : (fun x ↦ (1 + r * x) / (1 + r * (x - 1)))
-    = (fun x ↦ (1 + r * x)) / fun x => (1 + r * (x - 1)) := by ext;simp
-  rw [this] at hc
-  rw [deriv_div] at hc
-  simp at hc
-  rw [deriv_const_mul] at hc
-  rw [hr] at hc
-  simp at hc
-  field_simp at hc
-  ring_nf at hc
-  revert hc
-  simp
-  linarith
-  simp
-  simp
-  refine differentiableAt_of_deriv_ne_zero ?_
-  rw [deriv_const_mul]
-  rw [hr]
-  simp
-  simp
-  simp
-  ring_nf
-  rw [hr]
-  field_simp
+/--
+For concave down accumulation functions `a`,
+the discount rate is not bounded by the force of interest.
+We prove it here for `a t = ln (1 + t)` with `t = 1`.
+-/
+theorem not_discount_le_force :
+    let a := fun t => log (1 + t)
+    ¬ ∀ t ≥ 0, interest.d a t ≤ interest.δ a t := by
+    intro a
+    push_neg
+    use 1
+    constructor
+    · simp
+    simp [interest.d, interest.δ, a]
+    conv => left; left; left; change log ∘ fun t => 1 + t
+    rw [deriv_comp]
+    simp
+    conv => left; left; right; left; change (fun _ => 1) + fun t => t
+    simp
+    have : (1:ℝ)+1 = 2 := by linarith
+    rw [this]
+    have : 0 < log 2 := by positivity
+    suffices  (2⁻¹ / log 2) * log 2 < 1 * log 2 by
+      apply (mul_lt_mul_iff_of_pos_right (by tauto)).mp this
+    suffices 2⁻¹ < log 2 by
+        simp
+        have :  2⁻¹ / log 2 * log 2 = 2⁻¹ := by field_simp;ring_nf
+        rw [this]
+        tauto
+    field_simp
+    suffices (1 / 2) * 2 < log 2 * 2 by
+        have := @mul_lt_mul_iff_of_pos_right ℝ _ _ _
+            2 (1 / 2) (log 2) _ _ (by simp)
+        tauto
+    suffices 1 < 2 * log 2 by
+        ring_nf;linarith
+    have h₀ : (0:ℝ) < 2 := by linarith
+    suffices 1 < log (2 ^ (2:ℝ)) by
+        convert this using 1
+        refine (mul_log_eq_log_iff h₀ ?_).mpr ?_
+        simp
+        rfl
+    have : (2:ℝ) ^ (2:ℝ) = 4 := by linarith
+    rw [this]
+    refine (lt_log_iff_exp_lt ?_).mpr ?_
+    simp
+    linarith [Real.exp_one_lt_d9]
+    simp
+    apply DifferentiableAt.add (by simp) (by simp)
 
-theorem advanced {i d : ℝ} (hi : 0 < i)
+/-- For simple interest, the force is still above the discount.
+However, we need to restrict the time interval to [0,∞].
+From a classroom discussion on September 12, 2025.
+-/
+theorem simple_discount_le_force (r : ℝ) (hr : 0 ≤ r) :
+    let a := fun t => 1 + r * t
+    ∀ t ≥ 0, interest.d a t ≤ interest.δ a t := by
+    intro a x hx
+    simp [interest.d, interest.δ, a]
+    rw [deriv_const_mul]
+    field_simp
+    suffices  1 * (1 + r * x) ≤ ((r + (1 + r * (x - 1))) / (1 + r * x)) * (1 + r * x) by
+        exact le_of_mul_le_mul_right this <| by positivity
+    field_simp
+    linarith
+    simp
+
+theorem force_lt_average_interest_discount {i d : ℝ} (hi : 0 < i)
   (h : (1 - d) * (1 + i) = 1) :
   Real.force i < (i + d) / 2 := by
   have h : 0 < 1 + i := by linarith
@@ -865,7 +1267,8 @@ theorem advanced {i d : ℝ} (hi : 0 < i)
   nth_rw 2 [add_comm]
   generalize 1 + i = α at *
   have g₃ :  (fun α ↦ 2 * log α + 1 / α - α) α < (fun α ↦ 2 * log α + 1 / α - α) 1 := by
-    have g₄ := @anti' (fun α => 2 * log α + 1 / α - α) (h₀ := g₂) 1 (a := α)
+    have g₄ := @antitone_of_deriv_neg' (fun α => 2 * log α + 1 / α - α)
+        (h₀ := force_lt_average_interest_discount_aux) 1 (a := α)
         (by
             refine ContinuousOn.add ?_ ?_
             · refine ContinuousOn.add ?_ ?_
@@ -900,9 +1303,7 @@ example {t i : ℝ} (hi : 0 < 1 + i) :
   interest.δ (fun t => (1 + i)^t) t = i.force := by
   unfold interest.δ force
   simp
-  have h₀ : (1 + i)^t ≠ 0 := by
-    apply ne_of_gt
-    apply rpow_pos_of_pos hi
+  have h₀ : (1 + i)^t ≠ 0 := ne_of_gt <| by positivity
   rw [← eq_div_of_mul_eq h₀]
   simp_rw [rpow_def_of_pos hi]
   have : (fun t ↦ rexp (log (1 + i) * t)) = rexp ∘ fun t ↦ (log (1 + i) * t) := by
@@ -956,28 +1357,28 @@ example (i : ℝ) (hi : 0 < 1 + i) : i.force ≤ i := by
 
 noncomputable def Real.effInt (im m : ℝ) := (1 + im / m) ^ m - 1
 
-example (i : ℝ) (h : 0 < 1 + i) : i.force ≤ i.nomInt 2 := by
-  suffices (i.force).effInt 2 ≤ (i.nomInt 2).effInt 2 by
-    have := @effInt_increasing
+-- example (i : ℝ) (h : 0 < 1 + i) : i.force ≤ i.nomInt 2 := by
+--   suffices (i.force).effInt 2 ≤ (i.nomInt 2).effInt 2 by
+--     have := @effInt_increasing
 
-    sorry
-  have : (i.nomInt 2).effInt 2 = i := sorry
-  rw [this]
-  unfold force effInt
-  suffices (1 + log (1 + i) / 2) ^ (2:ℝ) ≤ 1 + i by
-    linarith
-  generalize 1 + i = j
-  sorry
+--     sorry
+--   have : (i.nomInt 2).effInt 2 = i := sorry
+--   rw [this]
+--   unfold force effInt
+--   suffices (1 + log (1 + i) / 2) ^ (2:ℝ) ≤ 1 + i by
+--     linarith
+--   generalize 1 + i = j
+--   sorry
 
-example (i : ℝ) (h : 0 < 1 + i) : i.force ≤ i.nomInt 2 := by
-  suffices (i.force).effIntTop ≤ (i.nomInt 2).effIntTop by
-    have := @effInt_increasing
+-- example (i : ℝ) (h : 0 < 1 + i) : i.force ≤ i.nomInt 2 := by
+--   suffices (i.force).effIntTop ≤ (i.nomInt 2).effIntTop by
+--     have := @effInt_increasing
 
-    sorry
-  have : (i.nomInt 2).effInt 2 = i := sorry
-  rw [force_effIntTop _ h]
-  unfold effIntTop nomInt
-  sorry
+--     sorry
+--   have : (i.nomInt 2).effInt 2 = i := sorry
+--   rw [force_effIntTop _ h]
+--   unfold effIntTop nomInt
+--   sorry
 
 lemma compound_leftinv {i m : ℝ} (hm : m ≠ 0)
     (hi : 0 ≤ 1 + i) : (i.nomInt m).effInt m = i := by
@@ -1005,9 +1406,7 @@ lemma compound_rightinv {i m : ℝ} (hml : 1 ≤ m)
     field_simp
   have h₀ : 0 ≤ 1 + i / m := by
     field_simp
-    apply div_nonneg
-    linarith
-    linarith
+    apply div_nonneg <;> linarith
   generalize i / m = j at *
   suffices (1 + ((1 + j) ^ m - 1)) ^ (1 / m) = 1 + j by
     rw [this]
@@ -1021,16 +1420,14 @@ lemma compound_rightinv {i m : ℝ} (hml : 1 ≤ m)
   rw [mul_inv_cancel₀ hm]
   simp
 
+open Real
+
 lemma pow_pow {x y z : ℝ} (h : x ^ y < z ^ y)
-    (hx : 1 < x)
-    (hy : 0 < y)
-    (hz : 1 < z)
-    : x < z := by
-  rw [rpow_def_of_pos (by linarith)] at h
-  rw [rpow_def_of_pos (by linarith)] at h
-  have h₀ : log x * y < log z * y := exp_lt_exp.mp h
-  have : log x < log z := (mul_lt_mul_iff_of_pos_right hy).mp h₀
-  refine (log_lt_log_iff ?_ ?_).mp this <;> linarith
+    (hy : 0 < y) (hz : 1 < z) : x < z := by
+  -- Proof by DeepSeek
+  by_contra! H  -- H : z ≤ x
+  have : z ^ y ≤ x ^ y := Real.rpow_le_rpow (by linarith) H hy.le
+  linarith
 
 
 /-- Conversion between nominal and effective interest rate
@@ -1045,36 +1442,26 @@ noncomputable def compound_interest {m : ℝ} (hm : 1 ≤ m) : PartialEquiv ℝ 
     unfold nomInt
     simp at hi ⊢
     apply mul_nonneg
-    linarith
-    suffices 1 ≤ (1 + i) ^ m⁻¹ by linarith
-    suffices 1 ^ m⁻¹ ≤ (1 + i) ^ m⁻¹ by simpa using this
-    have : 1 ≤ 1 + i := by linarith
-    have : 0 < m⁻¹ := by field_simp;linarith
-    refine (rpow_le_rpow_iff ?_ ?_ ?_).mpr (by tauto)
-    simp
-    linarith
-    simp
-    linarith
+    · linarith
+    · suffices 1 ≤ (1 + i) ^ m⁻¹ by linarith
+      suffices 1 ^ m⁻¹ ≤ (1 + i) ^ m⁻¹ by simpa using this
+      have : 1 ≤ 1 + i := by linarith
+      have : 0 < m⁻¹ := by field_simp;linarith
+      refine (rpow_le_rpow_iff ?_ ?_ ?_).mpr (by tauto)
+      simp
+      linarith
+      positivity
   map_target' := by
     intro i hi
     unfold effInt
     simp at hi ⊢
     suffices 1 ^ m ≤ (1 + i / m) ^ m by simpa using this
     have : 1 ≤ 1 + i := by linarith
-    have : 0 < m⁻¹ := by field_simp;linarith
+    have : 0 < m⁻¹ := by positivity
     refine (rpow_le_rpow_iff ?_ ?_ ?_).mpr (by
       suffices 0 ≤ i / m by linarith
-      apply div_nonneg
-      tauto
-      linarith)
-    simp
-    apply add_nonneg
-    simp
-    apply div_nonneg
-    tauto
-    linarith
-    simp at this
-    tauto
+      positivity)
+    all_goals positivity
   left_inv' := fun i hi => compound_leftinv (by linarith) (by simp at hi;linarith)
   right_inv' := fun i hi => compound_rightinv hm (by simp at hi;linarith)
 }
@@ -1092,9 +1479,7 @@ theorem nomIntLt (i n : ℝ) (hn : 1 < n) (hi : 0 < i) :
 
   have h₀ : ((1 + i) ^ n⁻¹) ^ n = (1 + i) ^ (n⁻¹ * n) := by
     rw [rpow_mul]
-    apply add_nonneg
-    simp
-    linarith
+    positivity
   have h₂ : Invertible n := by
     refine invertibleOfNonzero ?_
     linarith
@@ -1108,13 +1493,9 @@ theorem nomIntLt (i n : ℝ) (hn : 1 < n) (hi : 0 < i) :
     linarith
   suffices ((1 + i) ^ n⁻¹) ^ n < (1 + i / n) ^ n by
     apply pow_pow this
-    have : (1:ℝ) = (1:ℝ) ^ n⁻¹ := by simp
-    nth_rw 1 [this]
-    exact (rpow_lt_rpow_iff (by simp) (by linarith) (by simp;linarith)).mpr <| by linarith
     linarith
     suffices 0 < i / n by linarith
-    apply div_pos hi
-    linarith
+    positivity
   rw [← rpow_mul]
   rw [h₁]
   simp
@@ -1134,6 +1515,86 @@ noncomputable def Real.nomDis (d : ℝ) (m : ℝ) := m * (1 - (1 - d) ^ ((1:ℝ)
 
 /--  1 - d = (1 - d_m/m)^m  -/
 noncomputable def Real.effDis (d : ℝ) (m : ℝ) := 1 - (1 - d / m) ^ m
+
+/--
+Broverman's Exercise 1.5.10 (b) holds as long as the interest is ≥ 0.
+It is a generalization of the equation
+i (1-d) = d
+(1+i) (1-d) = 1
+and together with part (a) actually just says
+`(1 - d^(m)/m) (1 + i^(m)/m) = 1`
+-/
+theorem broverman_exercise_1_5_10_b {m i d : ℝ} (hid : (1+i) * (1-d)=1)
+    (hm₀ : 1 ≤ m) (hi : 0 ≤ i) :
+    i.nomInt m = d.nomDis m / (1 - d.nomDis m / m) := by
+
+  rcases Or.symm (Decidable.lt_or_eq_of_le hi) with (hi | hi)
+  · symm at hi
+    subst hi
+    simp at hid
+    subst hid
+    simp [nomInt, nomDis]
+  have hi : 0 ≤ 1 + i := by linarith
+  have hd₁ : 0 < d := by
+    by_contra H
+    simp at H
+    have : 1 ≤ 1 - d := by linarith
+    have : (1:ℝ) < 1 := calc
+        _ < (1 + i) * 1 := by linarith
+        _ ≤ (1 + i) * (1 - d) := by
+            exact mul_le_mul_of_nonneg_left this hi
+        _ = 1 := hid
+    simp at this
+  have hd : 0 < 1 - d := by
+    by_contra H
+    have : 0 = 1 - d ∨ 0 > 1 - d := eq_or_lt_of_not_gt H
+    cases this with
+    | inl h => rw [← h] at hid;simp at hid
+    | inr h =>
+        cases Or.symm (Decidable.lt_or_eq_of_le hi) with
+        | inl h =>
+            rw [← h] at hid;simp at hid
+        | inr h₀ =>
+            have : (1 + i) * (1 - d) < 0 := mul_neg_of_pos_of_neg h₀ h
+            rw [hid] at this
+            linarith
+  have hm : (1 - d.nomDis m / m) ≠ 0 := by
+    unfold nomDis
+    field_simp
+    linarith
+
+  have h₀ : d.nomDis m / (1 - d.nomDis m / m) * (1 - d.nomDis m / m)
+    = d.nomDis m := by
+    generalize (1 - d.nomDis m / m) = x at *
+    field_simp
+
+  suffices i.nomInt m * (1 - d.nomDis m / m) =
+    (d.nomDis m / (1 - d.nomDis m / m)) * (1 - d.nomDis m / m) by
+        rw [h₀] at this
+        generalize (1 - d.nomDis m / m) = x at *
+        field_simp
+        exact this
+  field_simp
+  have : m - d.nomDis m ≠ 0 := by
+    unfold nomDis
+    intro hc
+    have : m * ((1 - d) ^ (1 / m)) = 0 := by linarith
+    have : ((1 - d) ^ (1 / m)) = 0 := by
+        have hm₀ : m ≠ 0 := by linarith
+        exact (mul_eq_zero_iff_left hm₀).mp this
+    ring_nf at this
+    have hr := @rpow_eq_zero (x := 1 - d) (y := m⁻¹) (by linarith) (by simp;linarith)
+    rw [hr] at this
+    linarith
+  have : d.nomDis m * m * (m - d.nomDis m) * m / ((m - d.nomDis m) * m)
+       = d.nomDis m * m := by field_simp;ring_nf
+  rw [this]
+  simp [nomInt,nomDis]
+  ring_nf
+  rw [mul_assoc, ← mul_rpow, hid]
+  simp
+  linarith
+  linarith
 
 
 
@@ -1211,14 +1672,13 @@ noncomputable def compound_discount {m : ℝ} (hm : 1 ≤ m) : PartialEquiv ℝ 
     · unfold nomDis
       simp at hd ⊢
       apply mul_pos
-      linarith
-      suffices (1 - d) ^ m⁻¹ < 1 ^ m⁻¹ by
-        simp at this; linarith
-      apply rpow_lt_rpow
-      linarith
-      linarith
-      field_simp
-      linarith
+      · positivity
+      · suffices (1 - d) ^ m⁻¹ < 1 ^ m⁻¹ by
+          simp at this; linarith
+        apply rpow_lt_rpow
+        linarith
+        linarith
+        positivity
     · unfold nomDis
       simp at hd ⊢
       field_simp
@@ -1337,68 +1797,70 @@ example (i x : ℝ) (n : ℝ) (hi : 0 ≤ i) (hn : n > 0)
   field_simp
 
 
-noncomputable def compound_discount_neg {m : ℝ} (hm : 1 ≤ m) : PartialEquiv ℝ ℝ := {
-  toFun := fun d => d.nomDis m
-  invFun := fun d => d.effDis m
-  source := Set.Iic 0
-  target := Set.Iic 0
-  map_source' := by
-    intro x hx
-    simp [nomDis] at hx ⊢
-    sorry
-  map_target' := by
-    intro x hx
-    simp [effDis] at hx ⊢
-    sorry
-  left_inv' := by
-    intro x hx
-    simp [effDis, nomDis] at hx ⊢
-    suffices  1 - x = (1 - m * (1 - (1 - x) ^ m⁻¹) / m) ^ m
-      by linarith
-    suffices  (1 - x) ^ m⁻¹ = (1 - m * (1 - (1 - x) ^ m⁻¹) / m)
-      by field_simp;sorry
-    have : m * (1 - (1 - x) ^ m⁻¹) / m =
-      (1 - (1 - x) ^ m⁻¹) := by sorry
-    rw [this]
-    simp
-  right_inv' := by
-    intro x hx
-    simp [nomDis, effDis] at hx ⊢
-    sorry
-}
 
 
-noncomputable def compound_discount'' {m : ℝ} (hm : 1 ≤ m) : PartialEquiv ℝ ℝ := {
-  toFun := fun d => d.nomDis m
-  invFun := fun d => d.effDis m
-  source := Set.Iio m
-  target := Set.Iio 1
-  map_source' := by
-    intro x hx
-    have : x ∈ Set.Iic 0 ∨ x ∈ Set.Ioo 0 m := by
-      simp at hx ⊢
-      by_cases H : x ≤ 0
-      tauto
-      simp at H
-      tauto
-    cases this with
-    | inl h =>
-      have := (compound_discount_neg hm).map_source'
-      unfold compound_discount_neg at this
-      -- have := (compound_discount hm).map_source'
-      -- unfold compound_discount at this
-      simp at this ⊢
-      simp at hx h
-      sorry
-    | inr h =>
-      have := (compound_discount_neg hm).map_source'
-      unfold compound_discount_neg at this
-      simp at this
-      have := (compound_discount hm).map_source'
-      unfold compound_discount at this
-      simp at this hx h ⊢
-      sorry
-  map_target' := by sorry
-  left_inv' := by sorry
-  right_inv' := by sorry
-}
+-- noncomputable def compound_discount_neg {m : ℝ} (hm : 1 ≤ m) : PartialEquiv ℝ ℝ := {
+--   toFun := fun d => d.nomDis m
+--   invFun := fun d => d.effDis m
+--   source := Set.Iic 0
+--   target := Set.Iic 0
+--   map_source' := by
+--     intro x hx
+--     simp [nomDis] at hx ⊢
+--     sorry
+--   map_target' := by
+--     intro x hx
+--     simp [effDis] at hx ⊢
+--     sorry
+--   left_inv' := by
+--     intro x hx
+--     simp [effDis, nomDis] at hx ⊢
+--     suffices  1 - x = (1 - m * (1 - (1 - x) ^ m⁻¹) / m) ^ m
+--       by linarith
+--     suffices  (1 - x) ^ m⁻¹ = (1 - m * (1 - (1 - x) ^ m⁻¹) / m)
+--       by field_simp;sorry
+--     have : m * (1 - (1 - x) ^ m⁻¹) / m =
+--       (1 - (1 - x) ^ m⁻¹) := by sorry
+--     rw [this]
+--     simp
+--   right_inv' := by
+--     intro x hx
+--     simp [nomDis, effDis] at hx ⊢
+--     sorry
+-- }
+
+
+-- noncomputable def compound_discount'' {m : ℝ} (hm : 1 ≤ m) : PartialEquiv ℝ ℝ := {
+--   toFun := fun d => d.nomDis m
+--   invFun := fun d => d.effDis m
+--   source := Set.Iio m
+--   target := Set.Iio 1
+--   map_source' := by
+--     intro x hx
+--     have : x ∈ Set.Iic 0 ∨ x ∈ Set.Ioo 0 m := by
+--       simp at hx ⊢
+--       by_cases H : x ≤ 0
+--       tauto
+--       simp at H
+--       tauto
+--     cases this with
+--     | inl h =>
+--       have := (compound_discount_neg hm).map_source'
+--       unfold compound_discount_neg at this
+--       -- have := (compound_discount hm).map_source'
+--       -- unfold compound_discount at this
+--       simp at this ⊢
+--       simp at hx h
+--       sorry
+--     | inr h =>
+--       have := (compound_discount_neg hm).map_source'
+--       unfold compound_discount_neg at this
+--       simp at this
+--       have := (compound_discount hm).map_source'
+--       unfold compound_discount at this
+--       simp at this hx h ⊢
+--       sorry
+--   map_target' := by sorry
+--   left_inv' := by sorry
+--   right_inv' := by sorry
+-- }
