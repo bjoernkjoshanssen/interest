@@ -1,8 +1,6 @@
 import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.Order.Filter.Defs
 import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
-import Mathlib.Analysis.ODE.Gronwall
-
 
 /-!
 
@@ -238,7 +236,7 @@ noncomputable def a : ℕ → ℝ → ℝ := fun n i =>
   ∑ k ∈ Icc 1 n, (1 + i)⁻¹ ^ k
 
 
-/-- Can be used in `CPT_N_aux'` for instance. -/
+/-- The present value of a level-payments annuity with at least one payment is positive. -/
 lemma annuity_positive {n : ℕ} (hn : n ≠ 0) {i : ℝ} (hi : i > -1) :
   a n i > 0 := by
   unfold a
@@ -261,7 +259,7 @@ lemma annuity_positive {n : ℕ} (hn : n ≠ 0) {i : ℝ} (hi : i > -1) :
   simp
   tauto
 
-/-- Can be used in `CPT_N_aux'` for instance. -/
+/-- The present value of a level-payments annuity is nonnegative. -/
 lemma annuity_nonnegative (n : ℕ) {i : ℝ} (hi : i > -1) :
   a n i ≥ 0 := by
   unfold a
@@ -305,11 +303,11 @@ local notation n "⌝" i => n i
 local notation "ä" => a_dots
 local notation "s̈" => s_dots
 
-/-- In case of zero interest, the present value of the `n` payments of `1`
-is simply `n`. -/
+/-- In case of zero interest, the present value of the `n` payments of `1` is simply `n`. -/
 @[simp]
 theorem annuity_due_interest_zero {n : ℕ} : (ä n ⌝ 0) = n := by simp [a_dots]
 
+/-- In case of zero interest, the future value of the `n` payments of `1` is simply `n`. -/
 theorem future_value_annuity_due_interest_zero {n : ℕ} : (s̈ n ⌝ 0) = n := by simp [s_dots]
 
 /-- Formula for the present value of an annuity-immediate.
@@ -320,14 +318,6 @@ noncomputable def a_formula : ℕ → ℝ → ℝ  := fun n i =>
 /-- Annuities. Another variant. -/
 noncomputable def a_variant : ℕ → ℝ → ℝ := fun n i =>
   (∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k) - 1
-
-
-
-example (n : ℕ) (i : ℝ) : (ä n ⌝ i) = (1 + i) * (a n ⌝ i) := by
-  unfold a_dots a
-  simp
-  generalize 1 + i = α
-  sorry
 
 open Finset
 theorem a_eq_a_variant (n : ℕ) (i : ℝ) : (a n ⌝ i) = a_variant n i := by
@@ -392,15 +382,8 @@ theorem annuity_value_bounded {i : ℝ} (hi : i > 0) (n : ℕ) :
     (a_formula n ⌝ i) ≤ 1 / i :=
   div_le_div₀ zero_le_one (by ring_nf;simp;positivity) hi (by simp)
 
-example (n : ℕ) : ∑ i ∈ range (n+1), (1/(2 : ℝ))^i = 2 - (1/(2 : ℝ))^n := by
-  induction n with
-  | zero => simp;linarith
-  | succ n ih =>
-    rw [sum_range_succ, ih]
-    field_simp
-    ring_nf
 
-  /-- The value of an annuity increases with the number of pay periods. -/
+  /-- The value of an annuity increases with the number of payments. -/
 theorem annuity_value_increasing_with_time
   {n : ℕ} {i : ℝ} (hi : 0 < i) : (a_formula n ⌝ i) ≤ a_formula (n+1) ⌝ i := by
     have h₀ : (1 + i)⁻¹ ≤ 1 := by
@@ -446,11 +429,7 @@ end annuity
 
 /-- The BA II Plus Professional equation. -/
 def annuity_equation (IY PMT PV FV : ℝ) (N : ℕ) : Prop :=
-  PV +
-  PMT *
-  -- (Finset.sum (Finset.univ) (fun k : Fin N => (1 + IY/100) ^ k.1))
-  (annuity.a N (IY / 100))
-  + FV * (1 + IY/100)⁻¹ ^ N = 0
+  PV + PMT * (annuity.a N (IY / 100)) + FV * (1 + IY/100)⁻¹ ^ N = 0
 
 noncomputable def CPT_PV (IY PMT FV : ℝ) (N : ℕ) :=
   - PMT * (annuity.a N (IY / 100)) - FV * (1 + IY/100)⁻¹ ^ N
@@ -711,33 +690,28 @@ theorem CPT_IY_unique {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
                     suffices PMT * 2 < (PMT * 2 + -PV) by
                         apply (div_lt_one₀ _).mpr <;> tauto
                     linarith
-    let i := ι
-    have :  0 ∈ Set.Icc (f i) (f 0) := by
+    have : 0 ∈ Set.Icc (f ι) (f 0) := by
         simp
         constructor
-        apply le_of_lt
-        exact h₀.2
+        apply le_of_lt h₀.2
         unfold f
         simp
         unfold annuity.a
         simp
         tauto
-    have ⟨j,hj⟩:= @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _ 0 i (by linarith) f annuity_equation_continuity 0 this
+    have ⟨j,hj⟩:= @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _ 0 ι (by linarith) f annuity_equation_continuity 0 this
     use j
     simp at hj
     tauto
   have ha: StrictAntiOn f (Set.Ici 0) := by
-    unfold f
     intro a ha b hb hab
-    simp at ha hb ⊢
+    simp [f] at ha hb ⊢
     suffices PMT * annuity.a N b + FV * ((1 + b) ^ N)⁻¹ < PMT * annuity.a N a + FV * ((1 + a) ^ N)⁻¹ by
         linarith
     have : ((1 + b) ^ N)⁻¹ < ((1 + a) ^ N)⁻¹ := by
         refine inv_strictAnti₀ ?_ ?_
         positivity
-        refine pow_lt_pow_left₀ ?_ ?_ hN
-        linarith
-        linarith
+        refine pow_lt_pow_left₀ ?_ ?_ hN <;> linarith
     have : PMT * annuity.a N b  < PMT * annuity.a N a := (mul_lt_mul_left hPMT).mpr <| annuity_antitone hN hab ha
     have : FV * ((1 + b) ^ N)⁻¹ <  FV * ((1 + a) ^ N)⁻¹ := (mul_lt_mul_left hFV).mpr <| by tauto
     linarith
@@ -778,7 +752,7 @@ noncomputable def CPT_IY {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
     (hPMT : PMT > 0) (h :  0 ≤ PV + PMT * ↑N + FV)
     (hPV : PV < 0) (hFV : FV > 0): ℝ := (CPT_IY_unique hN hPMT h hPV hFV).choose
 
--- The [CPT] [IY] gives the only solution for interest rate per year.
+/-- [CPT] [IY] gives the only solution for interest rate per year. -/
 lemma IY_eq_CPT_IY {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
     (hPMT : PMT > 0) (h :  0 ≤ PV + PMT * ↑N + FV)
     (hPV : PV < 0) (hFV : FV > 0) (hann : annuity_equation IY PMT PV FV N)
@@ -787,8 +761,8 @@ lemma IY_eq_CPT_IY {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
 
 noncomputable def CPT_PMT (IY PV FV : ℝ) (N : ℕ) :=
   (- FV * (1 + IY / 100)⁻¹ ^ N  - PV) / (annuity.a N (IY / 100))
---can in principle also create a CPT_IY using Intermediate Value Theorem and Choice.
 
+/-- [CPT] [PMT] gives the only solution for payment. -/
 lemma PMT_eq_CPT_PMT {IY PMT PV FV : ℝ} {N : ℕ} (h : annuity_equation IY PMT PV FV N)
   (h₀ : IY > -100) (h₁ : IY ≠ 0) (hN : N ≠ 0) :
   PMT = CPT_PMT IY PV FV (N)
