@@ -3,8 +3,20 @@ import Mathlib.Analysis.SpecialFunctions.Log.Basic
 
 /-!
 
-## Five-way solvability of the Annuity Equation in Lean
+## Five implicit functions from the Annuity Equation
+
+The BA II Plus calculator values PMT, I/Y, N, FV, PV
+can each be computed from the other four.
+
+Main results:
+
+* `annuity_equation_unique_solvability`
+* `TVM_equation_unique_solvability`: by setting PMT=0 in
+  the annuity equation we obtain unique solution for the
+  Time Value of Money equation as well.
+
 -/
+
 open Finset
 
 /-- The sum of a finite geometric series. -/
@@ -680,7 +692,7 @@ lemma IY_eq_CPT_IY {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
   (CPT_IY_unique hN hPMT h hPV hFV).choose_spec.2 _ ⟨by linarith, hann⟩
 
 /-- [CPT] [IY] gives the only solution for interest rate per year. -/
-lemma IY_eq_CPT_IYNegOne {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
+lemma IY_eq_CPT_IY₁ {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
     (hPMT : PMT ≥ 0) (h :  0 ≤ PV + PMT * ↑N + FV)
     (hPV : PV < 0) (hFV : FV > 0) (hann : annuity_equation IY PMT PV FV N)
     (h₀ : IY > -100) : IY = CPT_IY₁ hN hPMT h hPV hFV :=
@@ -688,6 +700,27 @@ lemma IY_eq_CPT_IYNegOne {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
 
 noncomputable def CPT_PMT (IY PV FV : ℝ) (N : ℕ) :=
   (- FV * (1 + IY / 100)⁻¹ ^ N  - PV) / (annuity.a N (IY / 100))
+
+lemma PMT_eq_CPT_PMT.aux {IY : ℝ} {N : ℕ}
+   (h₀ : IY > -100) (hN : N ≠ 0)
+  (this : (100 / (100 + IY)) ^ N = 1 ^ N) : 100 / (100 + IY) = 1 := by
+      simp at this
+      have : 100 / (100 + IY) > 0 := by
+        apply div_pos
+        simp
+        linarith
+      generalize 100 / (100 + IY) = α at *
+      have := @pow_eq_one_iff NNReal _ _ _ ⟨α,by linarith⟩ N hN
+      simp at this
+      suffices (⟨α, by linarith⟩ : NNReal) = 1 by
+        simp at this
+        tauto
+      rw [← this]
+      suffices α ^ N = 1 by
+        apply NNReal.eq
+        simp
+        tauto
+      tauto
 
 /-- [CPT] [PMT] gives the only solution for payment. -/
 lemma PMT_eq_CPT_PMT {IY PMT PV FV : ℝ} {N : ℕ}
@@ -707,65 +740,18 @@ lemma PMT_eq_CPT_PMT {IY PMT PV FV : ℝ} {N : ℕ}
     unfold annuity.a_formula
     simp
     constructor
-    field_simp
-    contrapose! H
-    have : 100 ^ N / (100 + IY) ^ N
-      = (100 / (100 + IY)) ^ N := by ring_nf
-    rw [this] at H
-    have : ((100) / ((100) + IY)) ^ N = 1 ^ N := by field_simp;linarith
-    have : (100) / ((100) + IY) = 1 := by
-      have : 100 + IY > 0 := by linarith
-      generalize 100 + IY = i at *
-      have : 100 / i > 0 := by field_simp;linarith
-      generalize 100 / i = j at *
-      simp at *
-      have : N > 0 := by omega
-      have : N * Real.log j = Real.log (j ^ N) := (Real.log_pow j N).symm
-      have : j ^ N = Real.exp (N * Real.log j) := by
-        rw [this]
-        refine Eq.symm (Real.exp_log ?_)
-        (expose_names; exact pow_pos this_5 N)
-      have : Real.exp (N * Real.log j) = 1 := by linarith
-      have : Real.exp (N * Real.log j) = Real.exp 0 := by
-        rw [this];exact Eq.symm Real.exp_zero
-      have : N * Real.log j = 0 := by apply Real.exp_injective this
-      simp at this
-      cases this with
-      | inl h => omega
-      | inr h =>
-        cases h with
-        | inl h => subst h;simp_all
-        | inr h =>
-          cases h with
-          | inl h => tauto
-          | inr h => linarith
-    rw [this] at H
-    simp at this
-    have : 100 + IY ≠ 0 := by contrapose! h₀;linarith
-    have : 100 / (100 + IY) = 100 / 100 := by simp;tauto
-    have : 100 = 100 + IY := by
-      generalize 100 + IY = z at *
-      symm
-      let hu := (100 : ℝ)
-      have : hu / z = hu / 100 := this
-      have : hu ≠ 0 := by simp [hu]
-      have : z / hu = 100 / hu := by
-        apply (div_eq_div_iff_comm hu z hu).mp
-        tauto
-      simp at this
-      ring_nf at this
-      rw [mul_comm] at this
-      have : hu⁻¹ ≠ 0 := by simp;tauto
-      linarith
-    linarith
-    · exact H
+    · field_simp
+      contrapose! H
+      have : 100 ^ N / (100 + IY) ^ N
+        = (100 / (100 + IY)) ^ N := by ring_nf
+      rw [this] at H
+      have : ((100) / ((100) + IY)) ^ N = 1 ^ N := by field_simp;linarith
+      have : (100) / ((100) + IY) = 1 := by
+        apply PMT_eq_CPT_PMT.aux <;> tauto
+      grind
+    · tauto
   unfold CPT_PMT
-  generalize annuity.a N (IY / 100) = α at *
-  generalize (1 + IY / 100)⁻¹ ^ N = β at *
-  have : PMT * α = - (FV * β)  - PV := by
-    linarith
-  field_simp
-  rw [this]
+  grind
 
 
 noncomputable def CPT_IY  {IY PMT PV FV : ℝ} {N : ℕ}
@@ -793,10 +779,11 @@ theorem annuity_equation_unique_solvability {IY PMT PV FV : ℝ} {N : ℕ}
     (hann : annuity_equation IY PMT PV FV N)
     (hPMT : PMT ≥ 0) (hPV : PV < 0) (hFV : FV > 0) (hIY : IY > 0) :
     ((hN : N ≠ 0) →
-    PMT = CPT_PMT IY PV FV N ∧ IY = CPT_IY hann hN hPMT hPV hFV hIY) ∧
+    PMT = CPT_PMT IY PV FV N ∧
+    IY  = CPT_IY hann hN hPMT hPV hFV hIY) ∧
     PV  = CPT_PV IY PMT FV N ∧
-    FV  = CPT_FV IY PMT PV N ∧
-    (FV * (IY / 100) - PMT ≠ 0 → N = CPT_N IY PMT PV FV) := by
+    FV  = CPT_FV IY PMT PV N ∧ (FV * (IY / 100) - PMT ≠ 0 →
+    N   = CPT_N IY PMT PV FV) := by
   have hI₀ : IY > -100 := by linarith
   have hI₁ : IY ≠ -100 := by linarith
   have hI₂ : IY / 100 ≠ -2 := by linarith
@@ -804,9 +791,36 @@ theorem annuity_equation_unique_solvability {IY PMT PV FV : ℝ} {N : ℕ}
   · intro hN
     constructor
     exact PMT_eq_CPT_PMT hann hI₀ hN
-    exact IY_eq_CPT_IYNegOne _ _ _ _ _ hann hI₀
+    exact IY_eq_CPT_IY₁ _ _ _ _ _ hann hI₀
   · constructor
     exact PV_eq_CPT_PV hann
     constructor
     · exact FV_eq_CPT_FV hann hI₁
     · exact N_eq_CPT_N hann (ne_of_gt hIY) hI₁ hI₂
+
+/-- By setting `PMT=0` we obtain the unique solvability of the
+Time Value of Money equation. -/
+theorem TVM_equation_unique_solvability {IY PV FV : ℝ} {N : ℕ}
+    (hann : annuity_equation IY 0 PV FV N)
+    (hPV : PV < 0) (hFV : FV > 0) (hIY : IY > 0) :
+    ((hN : N ≠ 0) →
+    0  = CPT_PMT IY PV FV N ∧
+    IY = CPT_IY hann hN (by simp) hPV hFV hIY) ∧
+    PV = CPT_PV IY 0 FV N ∧
+    FV = CPT_FV IY 0 PV N ∧
+    N  = CPT_N IY 0 PV FV := by
+  have hI₀ : IY > -100 := by linarith
+  have hI₁ : IY ≠ -100 := by linarith
+  have hI₂ : IY / 100 ≠ -2 := by linarith
+  constructor
+  · intro hN
+    constructor
+    exact PMT_eq_CPT_PMT hann hI₀ hN
+    exact IY_eq_CPT_IY₁ _ _ _ _ _ hann hI₀
+  · constructor
+    exact PV_eq_CPT_PV hann
+    constructor
+    · exact FV_eq_CPT_FV hann hI₁
+    · exact N_eq_CPT_N hann (ne_of_gt hIY) hI₁ hI₂ (by
+        simp
+        constructor <;> linarith)
