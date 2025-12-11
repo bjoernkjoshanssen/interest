@@ -24,205 +24,6 @@ theorem sum_pow_interest (n : ℕ) {i : ℝ} (hi : i ≠ 0) (hi' : 1 + i ≠ 0) 
   .trans (congrArg (fun x => x-1) <| sum_pow (n+1)
     fun hc => hi <| left_eq_add.mp (inv_eq_one.mp hc).symm) (by grind)
 
-namespace ann
-variable (acc : ℝ → ℝ)
--- accumulation function. Called `a` in namespace `interest` but as it is a primitive
--- the name is flexible.
-
-/-- Present value of an annuity-immediate, general case.
-We write the sum from 1 to n as a sum from 0 to n-1 by replacing `t` by `t+1`.
-Although the PV of 1 varies continuously, only PV of 1 at integer times contribute to the PV of the annuity.
--/
-noncomputable def a : ℕ → ℝ := fun n => Finset.sum (Finset.univ : Finset (Fin n))
-    fun t => (1:ℝ) / acc (t.1+1)
-
-/-- Present value of deferred (by `m` periods) annuity-immediate (with `n` installments), general case. -/
-noncomputable def a_defer : ℕ → ℕ → ℝ := fun m n => Finset.sum (Finset.univ : Finset (Fin n))
-    fun t => (1:ℝ) / acc (m + t.1+1)
-
-/-- Present value of a continuous annuity, general case. -/
-noncomputable def a_bar : ℝ → ℝ := fun n => ∫ t in 0..n,  (1:ℝ) / acc t
-
-/-- Present value of a continuous annuity, general case. -/
-noncomputable def s_bar : ℝ → ℝ := fun n => ∫ t in 0..n, acc (n - t)
-
-
-/-- Present value of an annuity-due, general case. -/
-noncomputable def a_dots : ℕ → ℝ := fun n => Finset.sum (Finset.univ : Finset (Fin n))
-    fun t => (1:ℝ) / acc t.1
-
-/-- Future value of an annuity, general case. -/
-noncomputable def s : ℕ →  ℝ := fun n => Finset.sum (Finset.univ : Finset (Fin n))
-    fun t => acc (n - (t.1+1))
-
-local notation n "⌝" => n
-
-end ann
-
-/-- For "exponential" accumulation functions,
-the dependence of the present value of the deferred annuity-immediate
-upon `m` and `n` can be separated by multiplication `f m * g n`. -/
-example (acc : ℝ → ℝ)
-    (hacc: ∀ m n, acc (m + n) = acc m * acc n)
-    (m n : ℕ) : ann.a_defer acc m n = (1 / acc m) * ann.a acc n := by
-    unfold ann.a_defer ann.a
-    simp_rw [hacc]
-    simp_rw [mul_assoc]
-    have : (fun x : Fin n => 1 / (acc ↑m * (acc ↑↑x * acc 1)))
-        = fun x : Fin n => (1 / acc ↑m) * (1 / (acc ↑↑x * acc 1)) := by
-      ext
-      simp
-      ring_nf
-    simp_rw [this]
-    rw [mul_sum univ]
-
-/-- The exponential accumulation function is "nice". -/
-example (i : ℝ) (hi : 0 < 1 + i):
-    let acc := (fun t : ℝ => (1 + i) ^ t)
-    ∀ m n, acc (m + n) = acc m * acc n := by
-  intro acc
-  unfold acc
-  intro m n
-  refine Real.rpow_add ?_ m n
-  exact hi
-
-
-/-- The present value of a continuous annuity under simple interest
-is at most the future value.
--/
-
-lemma present_value_continuous_annuity_simple_interest_le_future_value {r n : ℝ} (hr : 0 ≤ r)
-    (hn : 0 ≤ n) :
-    let acc := fun t => 1 + r * t
-    ann.a_bar acc n ≤ ann.s_bar acc n := by
-  intro acc
-  unfold ann.a_bar ann.s_bar acc
-  apply intervalIntegral.integral_mono_on_of_le_Ioo hn
-  apply intervalIntegral.intervalIntegrable_one_div
-  intro x hx
-  simp
-  have : 0 ≤ x := by
-    have h₁ := hx.1
-    have h₂ := hx.2
-    simp at h₁ h₂
-    cases h₁ with
-    | inl h => tauto
-    | inr h =>
-        cases h₂ with
-        | inl h =>
-            have : n = 0 := by linarith
-            subst this
-            exact h
-        | inr h => linarith
-  positivity
-  refine Continuous.comp_continuousOn' ?_ ?_
-  exact continuous_add_left 1
-  refine continuousOn_of_forall_continuousAt ?_
-  intro x hx
-  refine Continuous.continuousAt ?_
-  exact continuous_mul_left r
-
-  apply IntervalIntegrable.add
-  simp
-  apply IntervalIntegrable.const_mul
-  apply IntervalIntegrable.sub
-  simp
-  simp
-  intro x hx
-  simp at hx ⊢
-  field_simp
-  have hr₀ : 0 < 1 + r * x := by
-    calc 0 < 1 := by simp
-         _ ≤ 1 + r * x := by
-            suffices 0 ≤ r * x by linarith
-            apply mul_nonneg hr
-            linarith
-  suffices   1 ≤ (1 + r * (n - x)) * (1 + r * x) by
-    exact (div_le_iff₀ hr₀).mpr this
-  suffices  0 ≤  r * ↑n + (r ^ 2 * ↑n * x - r ^ 2 * x ^ 2) by
-    linarith
-  apply add_nonneg
-  apply mul_nonneg
-  tauto
-  tauto
-  suffices r ^ 2 * x ^ 2 ≤ r ^ 2 * ↑n * x by
-    linarith
-  rw [mul_assoc]
-  suffices x ^ 2 ≤ (↑n * x) by
-    refine mul_le_mul ?_ ?_ ?_ ?_
-    simp
-    rw [pow_two]
-    suffices x ≤ (n:ℝ) by
-        apply mul_le_mul
-        convert this
-        simp
-        linarith
-        tauto
-    linarith
-    positivity
-    positivity
-
-  rw [pow_two]
-  suffices x ≤ n by
-        apply mul_le_mul
-        convert this
-        simp
-        linarith
-        linarith
-  linarith
-
-/--
-Under simple interest, the present value of an annuity-immediate is at most the
-future value. -/
-lemma present_value_annuity_simple_interest_le_future_value {r : ℝ} (hr : 0 ≤ r) (n : ℕ) :
-    let acc := fun t => 1 + r * t
-    ann.a acc n ≤ ann.s acc n := by
-  intro acc
-  apply sum_le_sum
-  intro i hi
-  simp
-  have hr₀ : 0 < 1 + r * (i.1+1) := by
-    calc 0 < 1 := by simp
-         _ ≤ 1 + r * (i.1+1) := by
-            suffices 0 ≤ r * i.1 by linarith
-            apply mul_nonneg hr
-            simp
-  field_simp
-  suffices   1 ≤ (1 + r * (n - (i.1+1))) * (1 + r * (i.1+1)) by
-    exact (div_le_iff₀ hr₀).mpr this
-  ring_nf
-  suffices  0 ≤  r * ↑n + (r ^ 2 * ↑n * (↑↑i+1) - r ^ 2 * (↑↑i+1) ^ 2) by
-    linarith
-  apply add_nonneg
-  apply mul_nonneg
-  tauto
-  simp
-  suffices r ^ 2 * (↑↑i+1) ^ 2 ≤ r ^ 2 * ↑n * (↑↑i+1) by
-    linarith
-  rw [mul_assoc]
-  suffices (↑↑i+1) ^ 2 ≤ (↑n * (↑↑i+1)) by
-    refine mul_le_mul ?_ ?_ ?_ ?_
-    simp
-    rw [pow_two]
-    suffices i.1+1 ≤ (n:ℝ) by
-        apply mul_le_mul
-        convert this
-        simp
-        positivity
-        simp
-    have hi₂ := i.2
-    norm_cast at *
-    positivity
-    positivity
-
-  rw [pow_two]
-  suffices i.1+1 ≤ n by
-        apply mul_le_mul
-        convert this
-        simp
-        positivity
-        simp
-  linarith [i.2]
 
 namespace annuity
 
@@ -276,11 +77,9 @@ lemma annuity_nonnegative (n : ℕ) {i : ℝ} (hi : i > -1) :
   apply this _ hk
 
 
-/-- Future value of an annuity-immediate.
-s for sum.
+/-- Future value of an annuity-immediate. s for sum.
 -/
-noncomputable def s : ℕ → ℝ → ℝ := fun n i =>
-  (1 + i) ^ n * a n i
+noncomputable def s : ℕ → ℝ → ℝ := fun n i => (1 + i) ^ n * a n i
 
 
 /-- Present value of an annuity-due.
@@ -319,7 +118,6 @@ noncomputable def a_formula : ℕ → ℝ → ℝ  := fun n i =>
 noncomputable def a_variant : ℕ → ℝ → ℝ := fun n i =>
   (∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k) - 1
 
-open Finset
 theorem a_eq_a_variant (n : ℕ) (i : ℝ) : (a n ⌝ i) = a_variant n i := by
   simp only [a, a_variant]
   induction n with
@@ -469,11 +267,9 @@ lemma FV_eq_CPT_FV {IY PMT PV FV : ℝ} {N : ℕ} (h : annuity_equation IY PMT P
 lemma N_eq_CPT_N {IY PMT PV FV : ℝ} {N : ℕ} (h : annuity_equation IY PMT PV FV N)
   (h₀ : IY ≠ 0)
   (h₁ : IY ≠ -100)
-  (h₂ : FV * (IY / 100) - PMT ≠ 0)
-  (h₄ : IY / 100 ≠ -2) :
+  (h₄ : IY / 100 ≠ -2)
+  (h_nonpar : FV * (IY / 100) - PMT ≠ 0) :
   N = CPT_N IY PMT PV FV := by
-
--- (PV * (IY / 100) + PMT) / (PMT - FV * (IY / 100)) < 1
   unfold annuity_equation at h
   have := @annuity.a_eq_a_formula (IY / 100) (by contrapose! h₀; linarith)
     (by contrapose! h₁;linarith)
@@ -492,7 +288,7 @@ lemma N_eq_CPT_N {IY PMT PV FV : ℝ} {N : ℕ} (h : annuity_equation IY PMT PV 
   have g₃ : V  = (- PV * (IY / 100) - PMT) / ((FV * (IY / 100) - PMT)) := by
     generalize FV * (IY / 100) - PMT = y at *
     field_simp
-    linarith
+    linarith -- uses h_nonpar
   rw [g₃] at h₃
   have g₀ : Real.log (1 + IY / 100)⁻¹ ≠ 0 := by
     simp
@@ -553,21 +349,64 @@ lemma annuity_equation_continuity {PMT PV FV i : ℝ} {N : ℕ} :
         linarith
 
 lemma annuity_antitone {N : ℕ} (hN : N ≠ 0) ⦃a b : ℝ⦄ (hab : a < b) (ha : -1 < a) :
-  annuity.a N b < annuity.a N a := by
-        unfold annuity.a
-        apply sum_lt_sum
-        intro t ht
-        simp at ht ⊢
-        refine inv_anti₀ ?_ ?_
-        have : 0 < 1 + a := by linarith
-        positivity
-        refine (pow_le_pow_iff_left₀ ?_ ?_ ?_).mpr ?_ <;> linarith
-        use 1
-        constructor
-        simp
-        omega
-        simp
-        refine inv_strictAnti₀ ?_ ?_ <;> linarith
+    annuity.a N b < annuity.a N a := by
+  unfold annuity.a
+  apply sum_lt_sum
+  intro t ht
+  simp at ht ⊢
+  refine inv_anti₀ ?_ ?_
+  have : 0 < 1 + a := by linarith
+  positivity
+  refine (pow_le_pow_iff_left₀ ?_ ?_ ?_).mpr ?_ <;> linarith
+  use 1
+  constructor
+  simp
+  omega
+  simp
+  refine inv_strictAnti₀ ?_ ?_ <;> linarith
+
+
+/-- We can eliminate the unnatural assumption by going to IY ≥ 0. -/
+lemma eliminate_spurious {IY PV PMT FV : ℝ} {N : ℕ}
+    (h : annuity_equation IY PMT PV FV N)
+    (hIY : IY ≥ 0) (hPMT : PMT > 0) (hFV : FV > 0) :
+    0 ≤ PV + PMT * ↑N + FV := by
+  unfold annuity_equation at h
+  rw [← h]
+  suffices PMT * annuity.a N (IY / 100) + FV * (1 + IY / 100)⁻¹ ^ N
+         ≤ PMT * ↑N + FV
+    by linarith
+  suffices PMT * annuity.a N (IY / 100) ≤ PMT * N ∧
+    FV * (1 + IY / 100)⁻¹ ^ N ≤  FV by
+      linarith
+  constructor
+  suffices annuity.a N (IY / 100) ≤ ↑N by
+    exact (mul_le_mul_iff_of_pos_left hPMT).mpr this
+  unfold annuity.a
+  apply le_trans
+  show _ ≤  ∑ k ∈ Icc 1 N, 1
+  refine sum_le_sum ?_
+  intro i hi
+  have : 1 + IY / 100 ≥ 1 := by linarith
+  simp
+  suffices 1 ≤ ((1 + IY / 100) ^ i) by
+    exact inv_le_one_of_one_le₀ this
+  by_cases H : i = 0
+  · subst H
+    simp
+  refine one_le_pow₀ ?_
+  linarith
+  simp
+  suffices (1 + IY / 100)⁻¹ ^ N ≤ 1 by exact (mul_le_iff_le_one_right hFV).mpr this
+  simp
+
+  suffices 1 ≤ ((1 + IY / 100) ^ N) by
+    exact inv_le_one_of_one_le₀ this
+  by_cases H : N = 0
+  · subst H
+    simp
+  refine one_le_pow₀ ?_
+  linarith
 
 /-- We do not use Global Axiom of Choice here,
 but just Intermediate Value Theorem.
@@ -575,181 +414,6 @@ but just Intermediate Value Theorem.
 Actually, ∀ ε > 0, ∃ i > 0, f i < PV + ε but we don't need to prove that here.
 -/
 theorem CPT_IY_unique {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
-    (hPMT : PMT > 0) (h :  0 ≤ PV + PMT * ↑N + FV)
-    (hPV : PV < 0) (hFV : FV > 0):
-    ∃! IY ≥ 0, annuity_equation IY PMT PV FV N := by
-  unfold annuity_equation
-  let f : ℝ → ℝ :=
-    fun i => PV + PMT * annuity.a N i + FV * (1 + i)⁻¹ ^ N
-  have ⟨i,hi⟩ : ∃ i ≥ 0, f i = 0 := by
-    let ι := 2 * (max FV PMT) / (-PV)
-    have hι : ι > 0 := by
-        simp [ι]
-        have : -PV > 0 := by linarith
-        apply mul_pos
-        apply mul_pos
-        simp
-        exact lt_sup_of_lt_left hFV
-        simp
-        linarith
-    have h₀ : ι > 0 ∧ f ι < 0 := by
-        constructor
-        · tauto
-        · unfold f
-          have (i : ℝ) (hi : i > 0) : annuity.a N i < 1/i := by
-            have := @annuity.a_eq_a_formula i (by linarith) (by linarith)
-            have := congrFun this N
-            rw [this]
-            unfold annuity.a_formula
-            suffices  (1 - (1 + i)⁻¹ ^ N) < 1 by
-                exact (div_lt_div_iff_of_pos_right hi).mpr this
-            suffices 0 < (1 + i)⁻¹ ^ N by linarith
-            positivity
-          have := this ι hι
-          apply lt_trans
-          · show PV + PMT * annuity.a N ι + FV * (1 + ι)⁻¹ ^ N <
-                 PV + PMT * (1 / ι) + FV * (1 + ι)⁻¹ ^ N
-            have : PMT * annuity.a N ι <
-              PMT * (1 / ι) := (mul_lt_mul_left hPMT).mpr this
-            linarith
-          calc _ ≤ PV + PMT * (1 / ι) + FV * (1 + ι)⁻¹ := by
-                suffices PMT * (1 / ι) + FV * (1 + ι)⁻¹ ^ N ≤ PMT * (1 / ι) + FV * (1 + ι)⁻¹ by linarith
-                suffices FV * (1 + ι)⁻¹ ^ N ≤ FV * (1 + ι)⁻¹ by linarith
-                suffices (1 + ι)⁻¹ ^ N ≤ (1 + ι)⁻¹ by exact
-                  (mul_le_mul_iff_of_pos_left hFV).mpr this
-                have : (1 + ι) > 1 := by linarith
-                have : (1 + ι)⁻¹ < 1 := inv_lt_one_of_one_lt₀ this
-                have : (1 + ι)⁻¹ > 0 := by simp;linarith
-                generalize (1+ι)⁻¹ = α at *
-                refine pow_le_of_le_one ?_ ?_ hN
-                linarith
-                linarith
-               _ < _ := by
-                unfold ι
-                have : PMT * (1 / (2 * max FV PMT / -PV)) = PMT * (-PV / (2 * max FV PMT)) := by field_simp
-                rw [this]
-                have : (1 + 2 * max FV PMT / -PV)⁻¹ = 1 / (1 + 2 * max FV PMT / -PV) := by simp
-                rw [this]
-                have : 1 / (1 + 2 * max FV PMT / -PV) = ((-PV) * 1) / (-PV * (1 + 2 * max FV PMT / -PV)) := by
-                    refine Eq.symm (IsUnit.mul_div_mul_left ?_ 1 (1 + 2 * max FV PMT / -PV))
-                    simp
-                    linarith
-                rw [this]
-                have : -PV * (1 + 2 * max FV PMT / -PV) = ((-PV) * 1 + (-PV) * (2 * max FV PMT / -PV)) := by ring_nf
-                rw [this]
-                have : -PV * (2 * max FV PMT / -PV) = 2 * max FV PMT := by
-                        refine mul_div_cancel₀ (2 * max FV PMT) ?_
-                        simp
-                        linarith
-                rw [this]
-                have :  PV + PMT * (-PV / (2 * max FV PMT)) + FV * (-PV * 1 / (-PV * 1 + 2 * max FV PMT))
-                    =  PV * (1 + PMT * (-1 / (2 * max FV PMT)) + FV * (-1 * 1 / (-PV * 1 + 2 * max FV PMT))) := by
-                    ring_nf
-                rw [this]
-                apply mul_neg_of_neg_of_pos hPV
-                simp
-                suffices - ( PMT * (-1 / (2 * max FV PMT)) + FV * (-1 / (-PV + 2 * max FV PMT))) < 1 by
-                    linarith
-                cases max_choice FV PMT with
-                | inl h =>
-                    rw [h];ring_nf
-                    have : PMT * FV⁻¹ ≤ 1 := by
-                        refine mul_inv_le_one_of_le₀ ?_ ?_
-                        exact sup_eq_left.mp h
-                        linarith
-                    have :  1 / 2 + FV * (FV * 2 - PV)⁻¹ < 1 := by
-                        suffices FV * (FV * 2 - PV)⁻¹ < 1/2 by linarith
-                        suffices FV / (FV * 2 + -PV) < 1/2 by simp at this ⊢;tauto
-                        suffices  2 * (FV / (FV * 2 + -PV)) < 2 * (1 / 2) by linarith
-                        simp
-                        have :  2 * (FV / (FV * 2 + -PV)) =
-                            (FV * 2) / (FV * 2 + -PV) := by ring_nf
-                        rw [this]
-                        suffices  FV * 2 < FV * 2 + -PV by apply (div_lt_one₀ _).mpr <;> linarith
-                        linarith
-                    calc _ ≤ (1 / 2) + FV * (FV * 2 - PV)⁻¹ := by linarith
-                         _ < _ := this
-                | inr h =>
-                    rw [h];ring_nf
-                    have : PMT * PMT⁻¹ =1 := CommGroupWithZero.mul_inv_cancel PMT <| by linarith
-                    rw [this]
-                    suffices FV * (PMT * 2 - PV)⁻¹ < 1/2 by linarith
-                    have : FV ≤ PMT := le_of_sup_eq h
-                    have : (PMT * 2 + -PV)⁻¹ = (PMT * 2 - PV)⁻¹ := by ring_nf
-                    rw [← this]
-                    have : 0 < -PV := by simp;tauto
-                    have : 0 < PMT * 2 + -PV := by positivity
-                    have : 0 < (PMT * 2 + -PV)⁻¹ := by positivity
-                    suffices PMT * (PMT * 2 + -PV)⁻¹ < 1 / 2 by
-                        calc _ ≤ _ := (mul_le_mul_iff_of_pos_right (by tauto)).mpr (by tauto)
-                             _ < _ := this
-                    suffices 2 * ( PMT * (PMT * 2 + -PV)⁻¹) < 2 * (1 / 2) by linarith
-                    simp
-                    have : 2 * (PMT * (PMT * 2 + -PV)⁻¹)
-                        =  PMT * 2 / (PMT * 2 + -PV) := by ring_nf
-                    rw [this]
-                    suffices PMT * 2 < (PMT * 2 + -PV) by
-                        apply (div_lt_one₀ _).mpr <;> tauto
-                    linarith
-    have : 0 ∈ Set.Icc (f ι) (f 0) := by
-        simp
-        constructor
-        apply le_of_lt h₀.2
-        unfold f
-        simp
-        unfold annuity.a
-        simp
-        tauto
-    have ⟨j,hj⟩:= @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _ 0 ι (by linarith) f annuity_equation_continuity 0 this
-    use j
-    simp at hj
-    tauto
-  have ha: StrictAntiOn f (Set.Ioi (-1)) := by
-    intro a ha b hb hab
-    simp [f] at ha hb ⊢
-    suffices PMT * annuity.a N b + FV * ((1 + b) ^ N)⁻¹ < PMT * annuity.a N a + FV * ((1 + a) ^ N)⁻¹ by
-        linarith
-    have : ((1 + b) ^ N)⁻¹ < ((1 + a) ^ N)⁻¹ := by
-        refine inv_strictAnti₀ ?_ ?_
-        have : 0 < 1 + a := by linarith
-        positivity
-        refine pow_lt_pow_left₀ ?_ ?_ hN <;> linarith
-    have : PMT * annuity.a N b  < PMT * annuity.a N a := (mul_lt_mul_left hPMT).mpr <| annuity_antitone hN hab ha
-    have : FV * ((1 + b) ^ N)⁻¹ <  FV * ((1 + a) ^ N)⁻¹ := (mul_lt_mul_left hFV).mpr <| by tauto
-    linarith
-
-  have : ∃! i ≥ 0, f i = 0 := by
-    use i
-    constructor
-    simp
-    tauto
-    intro j hj
-    by_contra H
-    have : i < j ∨ j < i := lt_or_gt_of_ne fun a ↦ H a.symm
-    rcases (lt_or_gt_of_ne fun a ↦ H a.symm) with (g | g)
-    all_goals specialize ha (by simp;linarith) (by simp;linarith) g; linarith
-  obtain ⟨i,hi⟩ := this
-  use i * 100
-  constructor
-  · constructor
-    simp
-    tauto
-    unfold f at hi
-    simp only [isUnit_iff_ne_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
-      IsUnit.mul_div_cancel_right]
-    tauto
-  · ring_nf
-    intro J hJ
-    have := hi.2 (J/100)
-    simp at hJ ⊢ this
-    specialize this (by linarith) (by
-        unfold f;rw [← hJ.2]
-        congr
-        simp
-        congr)
-    linarith
-
-theorem CPT_IY_uniqueNegOne {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
     (hPMT : PMT > 0)
     (h :  0 ≤ PV + PMT * ↑N + FV) -- comes from specific choice of ι
     (hPV : PV < 0) (hFV : FV > 0):
@@ -926,27 +590,23 @@ theorem CPT_IY_uniqueNegOne {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
 
 
 /-- The [CPT] [IY] button combination on the BA II Plus Financial. -/
-noncomputable def CPT_IY {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
+noncomputable def CPT_IY₁ {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
     (hPMT : PMT > 0) (h :  0 ≤ PV + PMT * ↑N + FV)
     (hPV : PV < 0) (hFV : FV > 0): ℝ := (CPT_IY_unique hN hPMT h hPV hFV).choose
-
-noncomputable def CPT_IYNegOne {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
-    (hPMT : PMT > 0) (h :  0 ≤ PV + PMT * ↑N + FV)
-    (hPV : PV < 0) (hFV : FV > 0): ℝ := (CPT_IY_uniqueNegOne hN hPMT h hPV hFV).choose
 
 /-- [CPT] [IY] gives the only solution for interest rate per year. -/
 lemma IY_eq_CPT_IY {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
     (hPMT : PMT > 0) (h :  0 ≤ PV + PMT * ↑N + FV)
     (hPV : PV < 0) (hFV : FV > 0) (hann : annuity_equation IY PMT PV FV N)
-    (h₀ : IY ≥ 0) : IY = CPT_IY hN hPMT h hPV hFV :=
-  (CPT_IY_unique hN hPMT h hPV hFV).choose_spec.2 _ ⟨h₀, hann⟩
+    (h₀ : IY ≥ 0) : IY = CPT_IY₁ hN hPMT h hPV hFV :=
+  (CPT_IY_unique hN hPMT h hPV hFV).choose_spec.2 _ ⟨by linarith, hann⟩
 
 /-- [CPT] [IY] gives the only solution for interest rate per year. -/
 lemma IY_eq_CPT_IYNegOne {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
     (hPMT : PMT > 0) (h :  0 ≤ PV + PMT * ↑N + FV)
     (hPV : PV < 0) (hFV : FV > 0) (hann : annuity_equation IY PMT PV FV N)
-    (h₀ : IY > -100) : IY = CPT_IYNegOne hN hPMT h hPV hFV :=
-  (CPT_IY_uniqueNegOne hN hPMT h hPV hFV).choose_spec.2 _ ⟨h₀, hann⟩
+    (h₀ : IY > -100) : IY = CPT_IY₁ hN hPMT h hPV hFV :=
+  (CPT_IY_unique hN hPMT h hPV hFV).choose_spec.2 _ ⟨h₀, hann⟩
 
 noncomputable def CPT_PMT (IY PV FV : ℝ) (N : ℕ) :=
   (- FV * (1 + IY / 100)⁻¹ ^ N  - PV) / (annuity.a N (IY / 100))
@@ -954,8 +614,7 @@ noncomputable def CPT_PMT (IY PV FV : ℝ) (N : ℕ) :=
 /-- [CPT] [PMT] gives the only solution for payment. -/
 lemma PMT_eq_CPT_PMT {IY PMT PV FV : ℝ} {N : ℕ} (h : annuity_equation IY PMT PV FV N)
   (h₀ : IY > -100) (hN : N ≠ 0) :
-  PMT = CPT_PMT IY PV FV (N)
-   := by
+  PMT = CPT_PMT IY PV FV (N) := by
   unfold annuity_equation at h
   have : annuity.a N (IY / 100) ≠ 0 := by
     by_cases H : IY = 0
@@ -963,10 +622,8 @@ lemma PMT_eq_CPT_PMT {IY PMT PV FV : ℝ} {N : ℕ} (h : annuity_equation IY PMT
       subst H
       simp
       tauto
-
     have := @annuity.a_eq_a_formula (IY / 100) (by contrapose! H; linarith)
       (by contrapose! h₀;linarith)
-
     rw [congrFun this]
     unfold annuity.a_formula
     simp
@@ -1028,39 +685,42 @@ lemma PMT_eq_CPT_PMT {IY PMT PV FV : ℝ} {N : ℕ} (h : annuity_equation IY PMT
   field_simp
   rw [this]
 
-/-- To make it a semialgebraic set,
-replace `N` with `N : ℝ`. -/
-theorem eq_CPT {IY PMT PV FV : ℝ} {N : ℕ}
-  (hann : annuity_equation IY PMT PV FV N)
 
+noncomputable def CPT_IY  {IY PMT PV FV : ℝ} {N : ℕ}
+  (hann : annuity_equation IY PMT PV FV N)
   (hN : N ≠ 0)
   (hPMT : PMT > 0)
-  (h :  0 ≤ PV + PMT * ↑N + FV)
   (hPV : PV < 0)
   (hFV : FV > 0)
+    (h₀ : IY > 0) :=
+  CPT_IY₁ hN hPMT (eliminate_spurious hann (le_of_lt h₀) hPMT hFV) hPV hFV
 
-    (h₁ :  FV * (IY / 100) - PMT ≠ 0)
-    (h₀ : IY > -100) (h₂ : IY ≠ 0) :
-  PMT = CPT_PMT IY PV FV N ∧
-  IY  = CPT_IYNegOne hN hPMT h hPV hFV ∧
+/--
+Main theorem on unique solvability of the Annuity Equation.
+To deduce interest rate we need time to pass and hence the number of periods N>0.
+To deduce the payment there must be at least one payment and hence again N>0.
+To deduce N, the coupon rate should not equal the yield rate and hence
+`FV * (IY / 100) - PMT ≠ 0`.
+These assumptions, together with appropriate positivity and negativity,
+suffice for unique existence of all variables.
+-/
+theorem annuity_equation_unique_solvability {IY PMT PV FV : ℝ} {N : ℕ}
+  (hann : annuity_equation IY PMT PV FV N)
+  (hPMT : PMT > 0) (hPV : PV < 0) (hFV : FV > 0) (hIY : IY > 0) :
+  ((hN : N ≠ 0) → PMT = CPT_PMT IY PV FV N ∧ IY = CPT_IY hann hN hPMT hPV hFV hIY) ∧
   PV  = CPT_PV IY PMT FV N ∧
   FV  = CPT_FV IY PMT PV N ∧
-  N   = CPT_N IY PMT PV FV := by
+  (FV * (IY / 100) - PMT ≠ 0 → N = CPT_N IY PMT PV FV) := by
+have hI₀ : IY > -100 := by linarith
+have hI₁ : IY ≠ -100 := by linarith
+have hI₂ : IY / 100 ≠ -2 := by linarith
 constructor
-apply PMT_eq_CPT_PMT
-exact hann
-show IY > -100;linarith
-exact hN
-constructor
-apply IY_eq_CPT_IYNegOne _ _ _ _ _ hann
-tauto
-constructor
-apply PV_eq_CPT_PV hann
-constructor
-apply FV_eq_CPT_FV hann
-linarith
-apply N_eq_CPT_N hann
-tauto
-linarith
-exact h₁
-linarith
+· intro hN
+  constructor
+  exact PMT_eq_CPT_PMT hann hI₀ hN
+  exact IY_eq_CPT_IYNegOne _ _ _ _ _ hann hI₀
+· constructor
+  exact PV_eq_CPT_PV hann
+  constructor
+  · exact FV_eq_CPT_FV hann hI₁
+  · exact N_eq_CPT_N hann (ne_of_gt hIY) hI₁ hI₂
