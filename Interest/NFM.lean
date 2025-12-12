@@ -450,21 +450,21 @@ lemma CPT_IY_unique.aux {PMT PV FV : ℝ}
   cases max_choice FV PMT with
   | inl h =>
     rw [h];ring_nf
-    have : PMT * FV⁻¹ ≤ 1 := by
-      refine mul_inv_le_one_of_le₀ ?_ ?_
-      exact sup_eq_left.mp h
-      linarith
-    have :  1 / 2 + FV * (FV * 2 - PV)⁻¹ < 1 := by
+    have : PMT * FV⁻¹ ≤ 1 :=
+      mul_inv_le_one_of_le₀ (sup_eq_left.mp h) <| le_of_lt hFV
+    have : 1 / 2 + FV * (FV * 2 - PV)⁻¹ < 1 := by
       suffices FV * (FV * 2 - PV)⁻¹ < 1/2 by linarith
       suffices FV / (FV * 2 + -PV) < 1/2 by simp at this ⊢;tauto
-      suffices  2 * (FV / (FV * 2 + -PV)) < 2 * (1 / 2) by linarith
+      apply (mul_lt_mul_left _).mp
       simp
       have :  2 * (FV / (FV * 2 + -PV)) = (FV * 2) / (FV * 2 + -PV) := by
         ring_nf
       rw [this]
-      suffices  FV * 2 < FV * 2 + -PV by
-        apply (div_lt_one₀ _).mpr <;> linarith
+      simp
+      apply (div_lt_one₀ _).mpr
       linarith
+      linarith
+      simp
     calc _ ≤ (1 / 2) + FV * (FV * 2 - PV)⁻¹ := by linarith
          _ < _ := this
   | inr h =>
@@ -480,14 +480,202 @@ lemma CPT_IY_unique.aux {PMT PV FV : ℝ}
     suffices PMT * (PMT * 2 + -PV)⁻¹ < 1 / 2 by
       calc _ ≤ _ := (mul_le_mul_iff_of_pos_right (by tauto)).mpr (by tauto)
            _ < _ := this
-    suffices 2 * ( PMT * (PMT * 2 + -PV)⁻¹) < 2 * (1 / 2) by linarith
-    simp
+    apply (mul_lt_mul_left _).mp
     have : 2 * (PMT * (PMT * 2 + -PV)⁻¹)
         =  PMT * 2 / (PMT * 2 + -PV) := by ring_nf
     rw [this]
-    suffices PMT * 2 < (PMT * 2 + -PV) by
-        apply (div_lt_one₀ _).mpr <;> tauto
+    simp
+    apply (div_lt_one₀ _).mpr
     linarith
+    tauto
+    simp
+
+lemma natpow_rpow (M : ℕ) (x : ℝ) (hx : x > 0) :
+    x ^ M = Real.exp (M * Real.log x) := by
+  induction M with
+  | zero => simp
+  | succ n ih =>
+    simp
+    have : x ^ (n+1) = x^ n * x := by rfl
+    rw [this]
+    have : (↑n + 1) * Real.log x
+      = n * Real.log x + 1 * Real.log x := by ring_nf
+    rw [this]
+    rw [Real.exp_add]
+    congr
+    simp
+    rw [Real.exp_log]
+    exact hx
+
+lemma TVM_interest_exists {PV FV : ℝ} {N : ℕ} (hN : N ≠ 0) (hPV : PV < 0)
+    (hFV : FV > 0) (h : 0 ≤ PV + FV) :
+    ∃ i, 0 ≤ i ∧ PV + FV * ((1 + i) ^ N)⁻¹ = 0 := by
+  use Real.exp ((1 / N) * Real.log (FV / -PV)) - 1
+  have : -PV ≤ FV := by linarith
+  have : FV / -PV ≥ 1 := by
+    refine (one_le_div₀ ?_).mpr ?_
+    linarith
+    tauto
+  constructor
+  generalize FV / -PV = α at *
+  simp
+  apply mul_nonneg
+  · simp
+  · exact Real.log_nonneg this
+  rw [add_sub_cancel]
+  rw [natpow_rpow]
+
+  field_simp
+  rw [Real.exp_log]
+  have : PV ≠ 0 := by linarith
+  have h₀ :  PV * (FV / -PV) = - (PV * (FV / PV)) := by ring_nf
+  rw [h₀]
+  rw [mul_div_left_comm]
+  rw [div_self this]
+  ring_nf
+  field_simp
+  aesop
+  apply Real.exp_pos
+
+lemma CPT_IY.concrete.aux₀ {PV FV : ℝ} {N : ℕ} (hN : N ≠ 0) (hPV : PV < 0) (hFV : FV > 0) :
+    let ι := 2 * FV / -PV;
+    PV + FV * (1 + ι)⁻¹ ^ N < 0 := by
+  intro ι
+  have hι : ι ≥ 0 := by
+    apply mul_nonneg
+    apply mul_nonneg
+    simp
+    linarith
+    simp
+    linarith
+  calc _ ≤  PV + FV * (1 + ι)⁻¹ := by -- same proof as below
+          repeat apply (add_le_add_iff_left _).mpr
+          apply (mul_le_mul_iff_of_pos_left hFV).mpr
+          have h₀ : (1 + ι)⁻¹ ≤ 1 := inv_le_one_of_one_le₀ <| by linarith
+          have h₁ : (1 + ι)⁻¹ ≥ 0 := by simp;linarith
+          exact pow_le_of_le_one h₁ h₀ hN
+        _ < _ := by
+          suffices PV + FV / (1 + ι) < 0 by simp at this ⊢;tauto
+          suffices FV / (1 + ι) < -PV by linarith
+          suffices FV < (-PV) * (1 + ι) by
+            refine (div_lt_iff₀ ?_).mpr this
+            linarith
+          unfold ι
+          suffices FV + PV < -PV * (2 * FV / -PV) by linarith
+          have : -PV * (2 * FV / -PV) = 2 * FV := by
+            refine mul_div_cancel₀ (2 * FV) ?_
+            simp
+            linarith
+          rw [this]
+          linarith
+
+lemma CPT_IY.concrete {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0) (hPV : PV < 0)
+    (hFV : FV > 0) (H : ¬PMT = 0) :
+    let ι := 2 * max FV PMT / -PV;
+    ι > 0 → PV + PMT * annuity.a N ι + FV * (1 + ι)⁻¹ ^ N < 0 := by
+      intro ι hι
+      have (i : ℝ) (hi : i > 0) : annuity.a N i < 1/i := by
+        rw [congrFun (annuity.a_eq_a_formula (i:=i) (by linarith) (by linarith)) N]
+        apply (div_lt_div_iff_of_pos_right hi).mpr
+        apply sub_lt_self
+        positivity
+      have hι₁ : ι > -1 := by
+        unfold ι
+        apply lt_trans
+        show -1 < 0
+        simp
+        apply mul_pos
+        simp
+        left
+        exact hFV
+        simp
+        exact hPV
+      have := this ι hι
+      by_cases hPMT : PMT < 0
+      · apply lt_trans
+        show _ < PV + FV * (1 + ι)⁻¹ ^ N
+        suffices PMT * annuity.a N ι < 0 by linarith
+        apply mul_neg_iff.mpr
+        · right
+          constructor
+          · exact hPMT
+          · exact annuity.annuity_positive hN hι₁
+        · convert CPT_IY.concrete.aux₀ hN hPV hFV
+          apply max_eq_left
+          linarith
+      apply lt_trans
+      · show _ < PV + PMT * (1 / ι) + FV * (1 + ι)⁻¹ ^ N
+        have hPMT : PMT > 0 := by contrapose! H;linarith
+        repeat rw [add_assoc]
+        exact (add_lt_add_iff_left _).mpr <| (add_lt_add_iff_right _).mpr
+          <| (mul_lt_mul_left hPMT).mpr this
+      calc
+      _ ≤ PV + PMT * (1 / ι) + FV * (1 + ι)⁻¹ := by
+        repeat rw [add_assoc]
+        repeat apply (add_le_add_iff_left _).mpr
+        apply (mul_le_mul_iff_of_pos_left hFV).mpr
+        have h₀ : (1 + ι)⁻¹ ≤ 1 := inv_le_one_of_one_le₀ <| by linarith
+        have h₁ : (1 + ι)⁻¹ ≥ 0 := by simp;linarith
+        exact pow_le_of_le_one h₁ h₀ hN
+      _ < _ := by
+        apply CPT_IY_unique.aux
+        contrapose! H; linarith
+        tauto
+        tauto
+
+/-- Part of `CPT_IY_unique` that does not explicitly require `PMT ≥ 0`.
+Without PMT<0 antitone may fail, e.g.
+-1 - (1-v^n)/i + v^n
+and also 0 ≤ PV + PMT * ↑N + FV fails.
+-/
+theorem CPT_IY.aux₀ {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
+  (h : 0 ≤ PV + PMT * N + FV)
+  (hPV : PV < 0) (hFV : FV > 0) :
+  ∃ i ≥ 0, PV + PMT * annuity.a N i + FV * (1 + i)⁻¹ ^ N = 0 := by
+    by_cases H : PMT = 0
+    · subst H
+      simp at h ⊢
+      exact TVM_interest_exists hN hPV hFV h
+    let ι := 2 * (max FV PMT) / (-PV)
+    have hι : ι > 0 := by
+      repeat apply mul_pos
+      exact Nat.ofNat_pos
+      exact lt_sup_of_lt_left hFV
+      simp
+      exact hPV
+    let f := (fun i ↦ PV + PMT * annuity.a N i + FV * (1 + i)⁻¹ ^ N)
+    have : 0 ∈ Set.Icc (f ι) (f 0) := by
+        constructor
+        · exact le_of_lt <| CPT_IY.concrete hN hPV hFV H hι
+        simp [f, annuity.a]
+        exact h
+    have ⟨j,hj⟩:= @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _ 0 ι
+      (by linarith) f annuity_equation_continuity 0 this
+    use j
+    simp at hj
+    tauto
+
+lemma annuity_strictAnti {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0) (hPMT : PMT ≥ 0)
+  (hFV : FV > 0) :
+    StrictAntiOn (fun i ↦ PV + PMT * annuity.a N i + FV * (1 + i)⁻¹ ^ N) (Set.Ioi (-1)) := by
+    intro a ha b hb hab
+    simp at ha hb ⊢
+    have : ((1 + b) ^ N)⁻¹ < ((1 + a) ^ N)⁻¹ := by
+        refine inv_strictAnti₀ ?_ ?_
+        have : 0 < 1 + a := by linarith
+        positivity
+        refine pow_lt_pow_left₀ ?_ ?_ hN <;> linarith
+    have : FV * ((1 + b) ^ N)⁻¹ < FV * ((1 + a) ^ N)⁻¹ :=
+      (mul_lt_mul_left hFV).mpr <| by tauto
+    by_cases H : PMT = 0
+    · subst H
+      simp
+      exact this
+    have hPMT : PMT > 0 := by contrapose! H;apply le_antisymm H hPMT
+    have : PMT * annuity.a N b  < PMT * annuity.a N a :=
+      (mul_lt_mul_left hPMT).mpr <| annuity_antitone hN hab ha
+    linarith
+
 
 /-- We do not use Global Axiom of Choice here,
 but just Intermediate Value Theorem.
@@ -501,151 +689,13 @@ theorem CPT_IY_unique {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
     (hPV : PV < 0) (hFV : FV > 0):
     ∃! IY > -100, annuity_equation IY PMT PV FV N := by
   unfold annuity_equation
-  let f : ℝ → ℝ :=
-    fun i => PV + PMT * annuity.a N i + FV * (1 + i)⁻¹ ^ N
-  have ⟨i,hi⟩ : ∃ i ≥ 0, f i = 0 := by
-    by_cases H : PMT = 0
-    · clear hPMT
-      unfold f
-      subst H
-      simp
-      use Real.exp ((1 / N) * Real.log (FV / -PV)) - 1
-      -- unfold i
-      -- simp
-
-      simp at h
-      have : -PV ≤ FV := by linarith
-      have : FV / -PV ≥ 1 := by
-        refine (one_le_div₀ ?_).mpr ?_
-        linarith
-        tauto
-      constructor
-      generalize FV / -PV = α at *
-      simp
-      apply mul_nonneg
-      simp
-      exact Real.log_nonneg this
-      have : 1 + (Real.exp (1 / ↑N * Real.log (FV / -PV)) - 1)
-        = Real.exp (1 / ↑N * Real.log (FV / -PV)) := by linarith
-      rw [this]
-      have (M : ℕ) (x : ℝ) (hx : x > 0) :
-        x ^ M = Real.exp (M * Real.log x) := by
-          induction M with
-          | zero => simp
-          | succ n ih =>
-            simp
-            have : x ^ (n+1) = x^ n * x := by rfl
-            rw [this]
-            have : (↑n + 1) * Real.log x
-              = n * Real.log x + 1 * Real.log x := by ring_nf
-            rw [this]
-            rw [Real.exp_add]
-            congr
-            simp
-            rw [Real.exp_log]
-            exact hx
-      rw [this]
-
-      field_simp
-      rw [Real.exp_log]
-      have : -PV ≠ 0 := by linarith
-      have :  PV * (FV / -PV) = - (PV * (FV / PV)) := by ring_nf
-      rw [this]
-      have : PV * (FV / PV) = FV * (PV / PV) := mul_div_left_comm PV FV PV
-      rw [this]
-      have : PV / PV = 1 := by
-        refine IsUnit.div_self ?_
-        refine Ne.isUnit ?_
-        linarith
-      rw [this]
-      ring_nf
-      field_simp
-      aesop
-      apply Real.exp_pos
-    let ι := 2 * (max FV PMT) / (-PV)
-    have hι : ι > 0 := by
-      simp [ι]
-      have : -PV > 0 := by linarith
-      apply mul_pos
-      apply mul_pos
-      simp
-      exact lt_sup_of_lt_left hFV
-      simp
-      linarith
-    have h₀ : ι > 0 ∧ f ι < 0 := by
-      constructor
-      · tauto
-      · unfold f
-        have (i : ℝ) (hi : i > 0) : annuity.a N i < 1/i := by
-          have := @annuity.a_eq_a_formula i (by linarith) (by linarith)
-          have := congrFun this N
-          rw [this]
-          unfold annuity.a_formula
-          suffices  (1 - (1 + i)⁻¹ ^ N) < 1 by
-              exact (div_lt_div_iff_of_pos_right hi).mpr this
-          suffices 0 < (1 + i)⁻¹ ^ N by linarith
-          positivity
-        have := this ι hι
-        apply lt_trans
-        · show PV + PMT * annuity.a N ι + FV * (1 + ι)⁻¹ ^ N <
-                PV + PMT * (1 / ι) + FV * (1 + ι)⁻¹ ^ N
-          have hPMT : PMT > 0 := by contrapose! H;linarith
-          have : PMT * annuity.a N ι <
-            PMT * (1 / ι) := (mul_lt_mul_left hPMT).mpr this
-          linarith
-        calc
-        _ ≤ PV + PMT * (1 / ι) + FV * (1 + ι)⁻¹ := by
-          suffices PMT * (1 / ι) + FV * (1 + ι)⁻¹ ^ N
-                 ≤ PMT * (1 / ι) + FV * (1 + ι)⁻¹ by
-            linarith
-          suffices FV * (1 + ι)⁻¹ ^ N ≤ FV * (1 + ι)⁻¹ by linarith
-          suffices (1 + ι)⁻¹ ^ N ≤ (1 + ι)⁻¹ by exact
-            (mul_le_mul_iff_of_pos_left hFV).mpr this
-          have : (1 + ι) > 1 := by linarith
-          have : (1 + ι)⁻¹ < 1 := inv_lt_one_of_one_lt₀ this
-          have : (1 + ι)⁻¹ > 0 := by simp;linarith
-          generalize (1+ι)⁻¹ = α at *
-          refine pow_le_of_le_one ?_ ?_ hN
-          linarith
-          linarith
-        _ < _ := by
-          apply CPT_IY_unique.aux
-          contrapose! H; linarith
-          tauto
-          tauto
-    have : 0 ∈ Set.Icc (f ι) (f 0) := by
-        constructor
-        · apply le_of_lt h₀.2
-        simp [f, annuity.a]
-        exact h
-    have ⟨j,hj⟩:= @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _ 0 ι
-      (by linarith) f annuity_equation_continuity 0 this
-    use j
-    simp at hj
-    tauto
-  have ha: StrictAntiOn f (Set.Ioi (-1)) := by
-    intro a ha b hb hab
-    simp [f] at ha hb ⊢
-    have : ((1 + b) ^ N)⁻¹ < ((1 + a) ^ N)⁻¹ := by
-        refine inv_strictAnti₀ ?_ ?_
-        have : 0 < 1 + a := by linarith
-        positivity
-        refine pow_lt_pow_left₀ ?_ ?_ hN <;> linarith
-    have : FV * ((1 + b) ^ N)⁻¹ < FV * ((1 + a) ^ N)⁻¹ :=
-      (mul_lt_mul_left hFV).mpr <| by tauto
-    by_cases H : PMT = 0
-    subst H
-    simp
-    tauto
-    have hPMT : PMT > 0 := by contrapose! H;linarith
-    have : PMT * annuity.a N b  < PMT * annuity.a N a :=
-      (mul_lt_mul_left hPMT).mpr <| annuity_antitone hN hab ha
-    linarith
+  let f : ℝ → ℝ := fun i => PV + PMT * annuity.a N i + FV * (1 + i)⁻¹ ^ N
+  have ⟨i,hi⟩ : ∃ i ≥ 0, f i = 0 := CPT_IY.aux₀ hN h hPV hFV
+  have ha: StrictAntiOn f (Set.Ioi (-1)) := annuity_strictAnti hN hPMT hFV
 
   have : ∃! i > -1, f i = 0 := by
     use i
     constructor
-    simp
     constructor
     linarith
     tauto
@@ -659,19 +709,17 @@ theorem CPT_IY_unique {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
   use i * 100
   constructor
   · constructor
-    simp
-    simp_all
-    linarith
-    unfold f at hi
-    simp only [isUnit_iff_ne_zero, ne_eq, OfNat.ofNat_ne_zero,
-      not_false_eq_true, IsUnit.mul_div_cancel_right]
-    tauto
+    · simp at hi
+      linarith
+    · unfold f at hi
+      convert hi.1.2 <;> linarith
   · ring_nf
     intro J hJ
     have := hi.2 (J/100)
     simp at hJ ⊢ this
     specialize this (by linarith) (by
-        unfold f;rw [← hJ.2]
+        unfold f
+        rw [← hJ.2]
         congr
         simp
         congr)
@@ -684,15 +732,9 @@ noncomputable def CPT_IY₁ {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
     (hPV : PV < 0) (hFV : FV > 0): ℝ :=
   (CPT_IY_unique hN hPMT h hPV hFV).choose
 
-/-- [CPT] [IY] gives the only solution for interest rate per year. -/
-lemma IY_eq_CPT_IY {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
-    (hPMT : PMT ≥ 0) (h :  0 ≤ PV + PMT * ↑N + FV)
-    (hPV : PV < 0) (hFV : FV > 0) (hann : annuity_equation IY PMT PV FV N)
-    (h₀ : IY ≥ 0) : IY = CPT_IY₁ hN hPMT h hPV hFV :=
-  (CPT_IY_unique hN hPMT h hPV hFV).choose_spec.2 _ ⟨by linarith, hann⟩
 
 /-- [CPT] [IY] gives the only solution for interest rate per year. -/
-lemma IY_eq_CPT_IY₁ {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
+lemma IY_eq_CPT_IY {PMT PV FV IY : ℝ} {N : ℕ} (hN : N ≠ 0)
     (hPMT : PMT ≥ 0) (h :  0 ≤ PV + PMT * ↑N + FV)
     (hPV : PV < 0) (hFV : FV > 0) (hann : annuity_equation IY PMT PV FV N)
     (h₀ : IY > -100) : IY = CPT_IY₁ hN hPMT h hPV hFV :=
@@ -753,8 +795,7 @@ lemma PMT_eq_CPT_PMT {IY PMT PV FV : ℝ} {N : ℕ}
   unfold CPT_PMT
   grind
 
-
-noncomputable def CPT_IY  {IY PMT PV FV : ℝ} {N : ℕ}
+noncomputable def CPT_IY {IY PMT PV FV : ℝ} {N : ℕ}
     (hann : annuity_equation IY PMT PV FV N)
     (hN : N ≠ 0) (hPMT : PMT ≥ 0)
     (hPV : PV < 0) (hFV : FV > 0)
@@ -772,8 +813,6 @@ To deduce N, the coupon rate should not equal the yield rate and hence
 `FV * (IY / 100) - PMT ≠ 0`.
 These assumptions, together with appropriate positivity and negativity,
 suffice for unique existence of all variables.
-
-The case `PMT = 0` is the Time Value of Money (TVM) Equation.
 -/
 theorem annuity_equation_unique_solvability {IY PMT PV FV : ℝ} {N : ℕ}
     (hann : annuity_equation IY PMT PV FV N)
@@ -782,7 +821,7 @@ theorem annuity_equation_unique_solvability {IY PMT PV FV : ℝ} {N : ℕ}
     PMT = CPT_PMT IY PV FV N ∧
     IY  = CPT_IY hann hN hPMT hPV hFV hIY) ∧
     PV  = CPT_PV IY PMT FV N ∧
-    FV  = CPT_FV IY PMT PV N ∧ (FV * (IY / 100) - PMT ≠ 0 →
+    FV  = CPT_FV IY PMT PV N ∧ (PMT ≠ FV * (IY / 100) →
     N   = CPT_N IY PMT PV FV) := by
   have hI₀ : IY > -100 := by linarith
   have hI₁ : IY ≠ -100 := by linarith
@@ -791,12 +830,15 @@ theorem annuity_equation_unique_solvability {IY PMT PV FV : ℝ} {N : ℕ}
   · intro hN
     constructor
     exact PMT_eq_CPT_PMT hann hI₀ hN
-    exact IY_eq_CPT_IY₁ _ _ _ _ _ hann hI₀
+    exact IY_eq_CPT_IY _ _ _ _ _ hann hI₀
+    -- exact IY_eq_CPT_IY _ _ (by apply of_IY_nonneg hann;linarith;tauto;tauto) _ _ hann hI₀
   · constructor
     exact PV_eq_CPT_PV hann
     constructor
     · exact FV_eq_CPT_FV hann hI₁
-    · exact N_eq_CPT_N hann (ne_of_gt hIY) hI₁ hI₂
+    · intro hx
+      exact N_eq_CPT_N hann (ne_of_gt hIY) hI₁ hI₂ (by contrapose! hx;linarith)
+
 
 /-- By setting `PMT=0` we obtain the unique solvability of the
 Time Value of Money equation. -/
@@ -816,7 +858,7 @@ theorem TVM_equation_unique_solvability {IY PV FV : ℝ} {N : ℕ}
   · intro hN
     constructor
     exact PMT_eq_CPT_PMT hann hI₀ hN
-    exact IY_eq_CPT_IY₁ _ _ _ _ _ hann hI₀
+    exact IY_eq_CPT_IY _ _ _ _ _ hann hI₀
   · constructor
     exact PV_eq_CPT_PV hann
     constructor
