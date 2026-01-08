@@ -1,6 +1,11 @@
 import Mathlib.Algebra.EuclideanDomain.Field
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Analysis.Convex.Deriv
+import Mathlib.Analysis.Calculus.FDeriv.Pow
+import Mathlib.Analysis.Calculus.Deriv.Pow
+import Mathlib.Topology.Algebra.Group.Defs
+-- import Interest.AristotleDeriv
 /-!
 
 ## Five implicit functions from the Annuity Equation
@@ -42,14 +47,35 @@ lemma id_mul_geom_sum (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Finset.rang
   | zero => simp
   | succ n ih =>
     rw [Finset.sum_range_succ]
-    simp
     rw [ih]
     have h₀ : (x - 1) ^ 2 ≠ 0 := by
       simp
       contrapose! hx
       linarith
+    set α := (x-1)^2
     field_simp
     ring_nf
+    field_simp
+    suffices (1 + x ^ n * (-1 - ↑n) + x ^ n * α * ↑(1 + n) + x * x ^ n * ↑n) =
+        (1 + x * x ^ n * (-1 - ↑(1 + n)) + x ^ 2 * x ^ n * ↑(1 + n)) by
+        rw [this]
+    suffices x ^ n * (-1 - ↑n) + x ^ n * α * ↑(1 + n) + x * x ^ n * ↑n =
+      x * x ^ n * (-1 - ↑(1 + n)) + x ^ 2 * x ^ n * ↑(1 + n) by linarith
+    unfold α
+    ring_nf
+    field_simp
+    suffices (x * (↑n - ↑(1 + n) * 2 + x * ↑(1 + n)) + (-1 - ↑n) + ↑(1 + n))
+        = x * (-1 - ↑(1 + n) + x * ↑(1 + n)) by
+        rw [this]
+        linarith
+    simp
+    suffices x * (↑n - ↑(1 + n) * 2 + x * ↑(1 + n))
+        = x * (-1 - ↑(1 + n) + x * ↑(1 + n)) by
+            linarith
+    suffices (↑n - ↑(1 + n) * 2 + x * ↑(1 + n)) = (-1 - ↑(1 + n) + x * ↑(1 + n)) by
+        rw [this]
+    simp
+    linarith
 
 lemma sum_Icc_succ_eq_sum_range (f : ℕ → ℝ) (n : ℕ) :
   f 0 + ∑ k ∈ Finset.Icc 1 n, f k
@@ -76,9 +102,6 @@ lemma sum_Icc_succ_eq_sum_range (f : ℕ → ℝ) (n : ℕ) :
     | inr h => tauto
   rw [this]
   simp
-  rw [Finset.sum_union]
-  simp
-  simp
 
 lemma id_mul_geom_sum₁ (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Finset.Icc 1 n, k * x^k =
   (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2 := by
@@ -103,31 +126,49 @@ There is a notation clash with the accumulation function `a`.
 `annuity.a` versus `a`.
 Etymology: a for annuity.
 -/
+
+def geom_sum : ℕ → ℝ → ℝ := fun n v =>
+  ∑ k ∈ Icc 1 n, v ^ k
+
+def id_mul_geom_sum : ℕ → ℝ → ℝ := fun n v =>
+  ∑ k ∈ Icc 1 n, k * v ^ k
+
 noncomputable def a : ℕ → ℝ → ℝ := fun n i =>
-  ∑ k ∈ Icc 1 n, (1 + i)⁻¹ ^ k
+  geom_sum n (1 + i)⁻¹
+
+lemma annuity_zero (n : ℕ) : a n 0 = n := by simp [a, geom_sum]
 
 /-- Increasing annuity. -/
 noncomputable def Ia : ℕ → ℝ → ℝ := fun n i =>
-  ∑ k ∈ Icc 1 n, k * (1 + i)⁻¹ ^ k
+  id_mul_geom_sum n (1 + i)⁻¹
+
+def bond_price_sum : ℕ → ℝ → ℝ → ℝ := fun n r v =>
+  (r * geom_sum n v + v ^ n)
 
 /-- Price of a bond with unit redemption value, coupon rate r, interest rate i. -/
 noncomputable def bond_price : ℕ → ℝ → ℝ → ℝ := fun n i r =>
-  (r * a n i + (1+i)⁻¹ ^ n)
+  bond_price_sum n r (1+i)⁻¹
+-- express in terms of `geom_sum` and `v`
 
 
-/-- Macaulay duration of a maturity `n`, level-payments bond (with redemption value 1)
-with coupon rate `r` and yield rate `i`. -/
-noncomputable def D : ℕ → ℝ → ℝ → ℝ := fun n i r =>
-  (r * Ia n i + n * (1+i)⁻¹ ^ n) /
-  bond_price n i r
 
-
+lemma Ia_eq_Ia_formula (n : ℕ) (i : ℝ) (hi : i ≠ 0) :
+    let x := (1 + i)⁻¹
+    Ia n i =
+    (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2 := by
+    let x := (1 + i)⁻¹
+    unfold Ia id_mul_geom_sum
+    have := @id_mul_geom_sum₁ x (by
+        unfold x
+        simp;tauto) n
+    unfold x at this
+    rw [this]
 
 /-- The present value of a level-payments annuity
 with at least one payment is positive. -/
 lemma annuity_positive {n : ℕ} (hn : n ≠ 0) {i : ℝ} (hi : i > -1) :
   a n i > 0 := by
-  unfold a
+  unfold a geom_sum
   have : 0 < 1 + i := by linarith
   have : 0 < (1 + i)⁻¹ := Right.inv_pos.mpr this
   have : ∀ k ∈ Finset.Icc 1 n, 0 < (1+i)⁻¹ ^ k := by
@@ -176,7 +217,7 @@ lemma annuity_positive {n : ℕ} (hn : n ≠ 0) {i : ℝ} (hi : i > -1) :
 /-- The present value of a level-payments annuity is nonnegative. -/
 lemma annuity_nonneg (n : ℕ) {i : ℝ} (hi : i > -1) :
   a n i ≥ 0 := by
-  unfold a
+  unfold a geom_sum
   have : 0 < 1 + i := by linarith
   have : 0 < (1 + i)⁻¹ := Right.inv_pos.mpr this
   have : ∀ k ∈ Finset.Icc 1 n, 0 < (1+i)⁻¹ ^ k := by
@@ -201,7 +242,7 @@ lemma bond_price_pos (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : 0 ≤ r) : 0 < bo
 
 lemma increasing_annuity_nonneg (n : ℕ) {i : ℝ} (hi : i > -1) :
   Ia n i ≥ 0 := by
-  unfold Ia
+  unfold Ia id_mul_geom_sum
   have : 0 < 1 + i := by linarith
   have : 0 < (1 + i)⁻¹ := Right.inv_pos.mpr this
   have : ∀ k ∈ Finset.Icc 1 n, 0 < (1+i)⁻¹ ^ k := by
@@ -217,66 +258,6 @@ lemma increasing_annuity_nonneg (n : ℕ) {i : ℝ} (hi : i > -1) :
   linarith
   apply this _ hk
 
-/-- A bond with unit redemption value and maturity 1 has Macaulay duration 1. -/
-lemma D_one {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) : D 1 i r = 1 := by
-  unfold D Ia bond_price a
-  simp
-  apply div_self
-  apply ne_of_gt
-  have h₄ := by apply bond_price_pos 1 hi hr
-  simp [bond_price,a] at h₄
-  exact h₄
-
-
-def duration_equation (n : ℕ) (i r d : ℝ) :=
-   d * bond_price n i r - (r * Ia n i + ↑n * (1 + i)⁻¹ ^ n) = 0
-
-/-- A coupon-free bond has Macaulay duration equal to its maturity date. -/
-lemma r_zero (n : ℕ) (i : ℝ) : duration_equation n i 0 n := by
-  simp [duration_equation, bond_price]
-
-
-
-/-- The Macaulay duration does indeed satisfy the duration equation. -/
-lemma D_duration_equation (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) :
-  duration_equation n i r (D n i r) := by
-  unfold duration_equation D
-  have := bond_price_pos n hi hr
-  generalize bond_price n i r = b at *
-  field_simp
-
-/-- The maturity date as a trivial upper bound on the Macaulay duration. -/
-lemma D_upper_bound (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) : D n i r ≤ n := by
-  have h₄ := by apply bond_price_pos n hi hr
-  unfold bond_price at h₄
-  apply (div_le_iff₀ h₄).mpr
-  suffices r * Ia n i ≤ r * (↑n * a n i) by
-    linarith
-  apply mul_le_mul_of_nonneg_left
-  unfold Ia a
-  rw [Finset.mul_sum]
-  apply sum_le_sum
-  intro k hk
-  simp at hk
-  refine mul_le_mul_of_nonneg_right ?_ ?_
-  simp
-  exact hk.2
-  apply pow_nonneg
-  simp
-  linarith
-  exact hr
-
-
-
-  lemma D_lower_bound (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) : 0 ≤ D n i r := by
-    have h : 1 + i ≥ 0 := by linarith
-    apply div_nonneg
-    apply add_nonneg $ mul_nonneg hr $ increasing_annuity_nonneg _ hi
-    apply mul_nonneg $ Nat.cast_nonneg _
-    apply pow_nonneg $ inv_nonneg.mpr h
-    apply add_nonneg
-    exact mul_nonneg hr $ annuity_nonneg _ hi
-    apply pow_nonneg $ inv_nonneg.mpr h
 
 
 
@@ -313,7 +294,7 @@ theorem annuity_due_interest_zero {n : ℕ} :
 
 @[simp]
 theorem annuity_immediate_interest_zero {n : ℕ} :
-    (a n ⌝ 0) = n := by simp [a]
+    (a n ⌝ 0) = n := by simp [a, geom_sum]
 
 /-- In case of zero interest,
 the future value of the `n` payments of `1` is simply `n`. -/
@@ -325,12 +306,16 @@ This formula is only valid when i ≠ 0. -/
 noncomputable def a_formula : ℕ → ℝ → ℝ  := fun n i =>
   (1 - ((1+i)⁻¹) ^ n) / i
 
+noncomputable def Ia_formula : ℕ → ℝ → ℝ := fun n i =>
+    let x := (1+i)⁻¹
+    (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2
+
 /-- Annuities. Another variant. -/
 noncomputable def a_variant : ℕ → ℝ → ℝ := fun n i =>
   (∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k) - 1
 
 theorem a_eq_a_variant (n : ℕ) (i : ℝ) : (a n ⌝ i) = a_variant n i := by
-  simp only [a, a_variant]
+  simp only [a, a_variant, geom_sum]
   induction n with
   | zero => simp
   | succ n ih =>
@@ -348,108 +333,6 @@ theorem a_eq_a_formula {i : ℝ} (hi : i ≠ 0) (hi' : 1 + i ≠ 0) :
   rw [a_eq_a_variant, a_formula, a_variant, ← sum_pow_interest n hi hi']
 
 
-lemma par_bond_price (n : ℕ) {i : ℝ} (hi : i > 0) :
-    bond_price n i i = 1 := by
-  unfold bond_price
-  have := congrFun $ @a_eq_a_formula i (by linarith) (by linarith)
-  rw [this]
-  unfold a_formula
-  field_simp
-  linarith
-
-
-/-- The maturity of an at-par bond with rate `i`
-and Macaulay duration `d`. -/
-noncomputable def CPT_N_from_D_par (i d : ℝ) :=
-    log (1 - d * (1 - (1+i)⁻¹)) / log (1+i)⁻¹
-
-/-- Determine the maturity from the duration
- for an at-par bond. -/
-lemma eq_CPT_N_from_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
-    (h :  duration_equation n i i d) :
-    n = CPT_N_from_D_par i d := by
-    unfold CPT_N_from_D_par
-    unfold duration_equation at h
-    rw [par_bond_price n hi] at h
-    unfold Ia at h
-    have := @id_mul_geom_sum₁ (1+i)⁻¹ (by
-        intro hc;simp at hc;subst hc;simp at hi) n
-    rw [this] at h
-    have : (1+i)⁻¹ ≠ 1 := by intro hc;simp at hc;linarith
-    have : ((1+i)⁻¹ - 1)^2 ≠ 0 := by
-        contrapose! this;simp at this;linarith
-    have h₀ : i * (1+i)⁻¹ = 1 - (1+i)⁻¹ := by field_simp
-    have : (1+i)⁻¹ - 1 ≠ 0 := by
-        contrapose! this
-        rw [this]
-        simp
-    have : 1 - (1+i)⁻¹ ≠ 0 := by
-        contrapose! this
-        linarith
-    have : i * (1+i)⁻¹ ≠ 0 := by
-        simp;constructor <;> linarith
-    have hiv : i = ((1+i)⁻¹)⁻¹ - 1 := by field_simp
-    have hivn : log ((1+i)⁻¹ ^ n) = n * log (1+i)⁻¹ := by
-        simp
-    have hlogv : log (1+i)⁻¹ ≠ 0 := by
-        simp
-        constructor
-        linarith
-        constructor <;> linarith
-    set v := (1+i)⁻¹
-    field_simp at h
-    ring_nf at h
-    set y := v^n
-    have h :  d * (1-v) ^ 2 - v * i +
-        y * (i * v * (1 + (1-v) * ↑n)
-        -n * (1-v)^2) = 0 := by linarith [v,y]
-    rw [h₀] at h
-    have :  d * (1 - v) ^ 2 - v * i + y * ((1 - v)) = 0
-        := by linarith
-    have : y = (v * i - d * (1 - v) ^ 2)/ ((1 - v)) := by
-        field_simp
-        linarith
-    have hv : v / (1 - v) = 1/i := by
-        rw [← h₀];field_simp;ring_nf
-    have : y = (v * i - d * (1 - v) ^ 2)/ ((1 - v)) := by
-        field_simp
-        linarith
-    have : y = i * (v / (1 - v))  - d * (1-v):= by
-        field_simp
-        linarith
-    rw [hv] at this
-    field_simp at this
-    have : log y = log (1 - d * (1-v)) := by rw [this]
-    rw [hivn] at this
-    rw [← this]
-    field_simp
-
-
-
-/- An ambitious quest: show that n can be computed from D,i,r when r < i: -/
--- lemma CPT_N_from_D (n : ℕ) {i r : ℝ} (hi : i > 0) (hr : r ≥ 0) (d x : ℝ)
---     (h :  duration_equation n i r d) : n = x := by
---   unfold duration_equation bond_price at h
---   unfold Ia at h
---   have := @id_mul_geom_sum₁ (1+i)⁻¹ (by intro hc;simp at hc;subst hc;simp at hi) n
---   rw [this] at h
---   have := congrFun $ @a_eq_a_formula i (by linarith) (by linarith)
---   rw [this] at h
---   repeat clear this
---   unfold a_formula at h
---   have : (1+i)⁻¹ ≠ 1 := by intro hc;simp at hc;linarith
---   have : ((1+i)⁻¹ - 1)^2 ≠ 0 := by intro hc;simp at hc;apply this;linarith
---   generalize (1+i)⁻¹ = v at *
---   field_simp at h
---   ring_nf at h
---   generalize v^n = y at h
---   have :  y * (d*(i-r)*(1-v)^2
---     + r * v * i * (1 + (1-v) * ↑n)
---         -i*n*(1-v)^2) =
---   - (d*r*(1-v)^2 - r * v * i) := by linarith
---   -- y -> 0
---   -- we see that if i=r we cannot solve for d.
---   sorry
 
 
 /-- The value of a perpetuity of `1` per period with interest rate `i`
@@ -568,7 +451,14 @@ lemma FV_eq_CPT_FV {IY PMT PV FV : ℝ} {N : ℕ}
   have : 1 + IY * (1 / 100) ≠ 0 := by
     contrapose! h₀
     linarith
+  have : (1 + IY * (1 / 100)) ^ N ≠ 0 := by
+    contrapose! this
+    simp at this ⊢
+    rw [this.1]
   generalize 1 + IY * (1 / 100) = x at *
+  field_simp
+  ring_nf
+  rw [inv_pow]
   field_simp
 
 
@@ -594,7 +484,6 @@ lemma N_eq_CPT_N {IY PMT PV FV : ℝ} {N : ℕ}
   have g₁ : PMT * (1 - V) + FV * V * (IY / 100) = - PV * (IY / 100) := by
     rw [← g₀]
     field_simp
-    linarith
   have g₂ : V * (FV * (IY / 100) - PMT) = - PV * (IY / 100) - PMT := by
     linarith
   have g₃ : V  = (- PV * (IY / 100) - PMT)
@@ -633,19 +522,30 @@ lemma N_eq_CPT_N {IY PMT PV FV : ℝ} {N : ℕ}
     (PV * (IY / 100) + PMT) (PMT - FV * (IY / 100))).symm
 
 
-lemma discount_continuity {i : ℝ} (k : ℕ) :
-  ContinuousOn (fun y ↦ (1 + y)⁻¹ ^ k) (Set.Ioc (-1) i) := by
+lemma discount_continuity₀ (k : ℕ) :
+  ContinuousOn (fun y ↦ (1 + y)⁻¹ ^ k) (Set.Ioi (-1 : ℝ)) := by
   apply ContinuousOn.pow
   apply (continuous_add_left _).continuousOn.inv₀
   intro x hx
-  simp at hx
+  rw [Set.mem_Ioi] at hx
   apply ne_of_gt
   linarith
 
+lemma discount_continuity {i : ℝ} (k : ℕ) :
+  ContinuousOn (fun y ↦ (1 + y)⁻¹ ^ k) (Set.Ioc (-1) i) := by
+  have := @discount_continuity₀
+  apply ContinuousOn.mono (discount_continuity₀ k)
+  intro j hj
+  rw [Set.mem_Ioc] at hj
+  rw [Set.mem_Ioi]
+  exact hj.1
+
+
 lemma annuity_continuous {i : ℝ} {N : ℕ} : ContinuousOn
     (fun i ↦ annuity.a N i)
-    (Set.Ioc (-1) i) :=
-        (continuous_finset_sum _ fun i _ ↦ continuous_apply i).comp_continuousOn'
+    (Set.Ioc (-1) i) := by
+      unfold annuity.a annuity.geom_sum
+      exact  (continuous_finset_sum _ fun i _ ↦ continuous_apply i).comp_continuousOn'
         <|continuousOn_pi.mpr discount_continuity
 
 lemma annuity_equation_continuity {PMT PV FV i : ℝ} {N : ℕ} : ContinuousOn
@@ -728,16 +628,16 @@ lemma CPT_IY_unique.aux {PMT PV FV : ℝ}
     have h₀ : 1 / 2 + FV * (FV * 2 - PV)⁻¹ < 1 := by
       suffices FV * (FV * 2 - PV)⁻¹ < 1/2 by linarith
       suffices FV / (FV * 2 + -PV) < 1/2 by simp at this ⊢;tauto
-      apply (mul_lt_mul_left _).mp
-      simp
-      have : 2 * (FV / (FV * 2 + -PV)) = (FV * 2) / (FV * 2 + -PV) := by
-        ring_nf
-      rw [this]
-      simp
-      apply (div_lt_one₀ _).mpr
-      linarith
-      linarith
-      simp
+      refine (div_lt_div_iff₀ ?_ ?_).mpr ?_
+      apply add_pos
+      · simp
+        exact hFV
+      . simp
+        exact hPV
+      · simp
+      · simp
+        exact hPV
+
     calc _ ≤ (1 / 2) + FV * (FV * 2 - PV)⁻¹ := by linarith
          _ < _ := h₀
   | inr h =>
@@ -753,15 +653,17 @@ lemma CPT_IY_unique.aux {PMT PV FV : ℝ}
     suffices PMT * (PMT * 2 + -PV)⁻¹ < 1 / 2 by
       calc _ ≤ _ := (mul_le_mul_iff_of_pos_right (by tauto)).mpr (by tauto)
            _ < _ := this
-    apply (mul_lt_mul_left _).mp
-    have : 2 * (PMT * (PMT * 2 + -PV)⁻¹)
-        =  PMT * 2 / (PMT * 2 + -PV) := by ring_nf
-    rw [this]
     simp
-    apply (div_lt_one₀ _).mpr
+    apply (mul_inv_lt_iff₀ _).mpr
+    rw [mul_add]
+    ring_nf
     linarith
+
+    apply add_pos
+    simp
     tauto
     simp
+    tauto
 
 
 lemma natpow_rpow (M : ℕ) (x : ℝ) (hx : x > 0) :
@@ -770,9 +672,9 @@ lemma natpow_rpow (M : ℕ) (x : ℝ) (hx : x > 0) :
   apply Eq.trans (rpow_natCast x M).symm <| rpow_def_of_pos hx M
 
 lemma TVM_interest_exists {PV FV : ℝ} {N : ℕ} (hN : N ≠ 0) (hPV : PV < 0)
-    (hFV : FV > 0) (h : 0 ≤ PV + FV) :
+    (h : 0 ≤ PV + FV) :
     ∃ i, 0 ≤ i ∧ PV + FV * ((1 + i) ^ N)⁻¹ = 0 := by
-  use exp (log (FV / -PV) * (1 / N)) - 1
+  use exp ((log (FV / -PV)) * (1 / N)) - 1
   have : -PV ≤ FV := by linarith
   have : FV / -PV ≥ 1 := (one_le_div₀ (by linarith)).mpr (by linarith)
   constructor
@@ -782,13 +684,24 @@ lemma TVM_interest_exists {PV FV : ℝ} {N : ℕ} (hN : N ≠ 0) (hPV : PV < 0)
     · exact log_nonneg this
     · simp
   rw [add_sub_cancel, natpow_rpow]
-  field_simp
-  rw [exp_log]
-  have h₀ : PV * (FV / -PV) = - (PV * (FV / PV)) := by ring_nf
-  rw [h₀, mul_div_left_comm, div_self (by linarith)]
-  field_simp
-  aesop
-  apply exp_pos
+  · field_simp
+    simp only [mul_zero]
+    have : - (FV / PV) = FV / -PV := by linarith
+    rw [this]
+    rw [log_exp]
+    rw [mul_div_left_comm]
+
+    field_simp
+    rw [exp_log]
+    field_simp
+    simp
+    right
+    have : PV ≠ 0 := by linarith
+    have : PV / PV = 1 := by field_simp
+    rw [this]
+    simp
+    linarith
+  exact exp_pos (log (FV / -PV) * (1 / ↑N))
 
 lemma PV_FV_aux {PV FV : ℝ} (hPV : PV < 0) (hFV : FV > 0) :
     let ι := 2 * FV / -PV;
@@ -862,8 +775,9 @@ lemma CPT_IY.concrete {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0) (hPV : PV < 0)
       · show _ < PV + PMT * (1 / ι) + FV * (1 + ι)⁻¹ ^ N
         have hPMT : PMT > 0 := by contrapose! H;linarith
         repeat rw [add_assoc]
-        exact (add_lt_add_iff_left _).mpr <| (add_lt_add_iff_right _).mpr
-          <| (mul_lt_mul_left hPMT).mpr this
+        apply (add_lt_add_iff_left _).mpr
+            $ (add_lt_add_iff_right _).mpr
+            $ (mul_lt_mul_iff_of_pos_left hPMT).mpr this
       calc
       _ ≤ PV + PMT * (1 / ι) + FV * (1 + ι)⁻¹ := by
         repeat rw [add_assoc]
@@ -887,7 +801,7 @@ theorem CPT_IY.aux₀ {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
     by_cases H : PMT = 0
     · subst H
       simp at h ⊢
-      exact TVM_interest_exists hN hPV hFV h
+      exact TVM_interest_exists hN hPV h
     let ι := 2 * (max FV PMT) / (-PV)
     have hι : ι > 0 := by
       repeat apply mul_pos
@@ -899,7 +813,7 @@ theorem CPT_IY.aux₀ {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
     have : 0 ∈ Set.Icc (f ι) (f 0) := by
         constructor
         · exact le_of_lt <| CPT_IY.concrete hN hPV hFV H hι
-        · simp [f, annuity.a]
+        · simp [f, annuity.a, annuity.geom_sum]
           exact h
     have ⟨j,hj⟩:= intermediate_value_Icc'
       (by show 0 ≤ ι;linarith) (by
@@ -927,116 +841,135 @@ lemma annuity_strictAnti {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
       positivity
       refine pow_lt_pow_left₀ ?_ ?_ hN <;> linarith
   have : FV * ((1 + b) ^ N)⁻¹ < FV * ((1 + a) ^ N)⁻¹ :=
-    (mul_lt_mul_left hFV).mpr <| by tauto
+    (mul_lt_mul_iff_of_pos_left hFV).mpr this
   by_cases H : PMT = 0
   · subst H
     simp
     exact this
   have hPMT : PMT > 0 := by contrapose! H;apply le_antisymm H hPMT
-  have : PMT * annuity.a N b  < PMT * annuity.a N a :=
-    (mul_lt_mul_left hPMT).mpr <| annuity.annuity_antitone hN hab ha
+  have : PMT * annuity.a N b  < PMT * annuity.a N a := by
+    apply (mul_lt_mul_iff_of_pos_left _).mpr <| annuity.annuity_antitone hN hab ha
+    tauto
   linarith
 
-noncomputable def a_inv_exists {n : ℕ} (hn : n ≠ 0) {ε : ℝ}
-    (hε : 0 < ε) :
-    ∃! i > -1, ε = annuity.a n i := by
-        have : (n:ℝ) ≥ 1 := by simp;omega
-        have hmm (m : ℕ) (hm : m ≥ 1) : annuity.a n (-1 + 1/m) ≥ m := by
-            unfold annuity.a
-            have : ∑ k ∈ Icc 1 n, ((1:ℝ) + (-1 + 1 / m))⁻¹ ^ k
-                = ∑ k ∈ Icc 1 n, (((1:ℝ) / m))⁻¹ ^ k := by
-                apply sum_congr rfl
-                intro k hk
-                congr
-                linarith
-            rw [this]
-            have : ((1:ℝ) / m)⁻¹ = m := by
-                simp
-            rw [this]
+theorem yield_exists.x
+    {ε : ℝ} (hε : 0 < ε)
+    {m : ℕ} (hm : ε ≤ ↑m) ⦃x : ℝ⦄ (hx₀ : (↑m)⁻¹ ≤ 1 + x) :
+    -1 < x := by
+  calc -1 < -1 + (m:ℝ)⁻¹ := by
+        refine lt_neg_add_iff_add_lt.mpr ?_
+        simp only [add_neg_cancel, inv_pos]
+        linarith
+  _  ≤ x := by linarith
+
+theorem yield_exists.y {n : ℕ} (hn : n ≠ 0) {ε : ℝ}
+    {i : ℝ} (hi : annuity.a n i = ε)
+    (hin : -1 < i) (y : ℝ) :
+    -1 < y → ε = annuity.a n y → y = i := by
+          intro hyn hyε
+          by_contra H
+          have : y < i ∨ i < y := lt_or_gt_of_ne H
+          cases this with
+          | inl h =>
+            have := annuity.annuity_antitone hn h hyn
+            linarith
+          | inr h =>
+            have := annuity.annuity_antitone hn h hin
+            linarith
+
+lemma yield_exists.sum {n : ℕ} (hn : n ≠ 0) (hnr : (n:ℝ) ≥ 1) :
+    ∑ k ∈ Icc 1 n, ((2:ℝ) * ↑n)⁻¹ ^ k ≤ ∑ _ ∈ Icc 1 n, ((2:ℝ) * ↑n)⁻¹ := by
+  apply sum_le_sum
+  intro k hk
+  simp at hk
+  have :  ((2:ℝ) * ↑n)⁻¹ ≥ 0 := by
+    positivity
+  refine pow_le_of_le_one ?_ ?_ ?_
+  linarith
+  apply inv_le_one_of_one_le₀
+  calc _ ≤ (n:ℝ) := hnr
+       _ ≤ _     := by linarith
+  linarith
+
+lemma yield_exists.bound {n : ℕ} (hn : n ≠ 0) {ε : ℝ} (hε : 0 < ε) (hnr : (n:ℝ) ≥ 1)
+    (hnr₀ : ↑n > 0) (H : ε < 1) :
+    (2 * ↑n / ε)⁻¹ ≤ 1 := by
+    simp
+    calc ε / (2*n) ≤ 1 / (2*n) := by
+            refine div_mul_le_div_mul_of_div_le_div ?_ ?_
+            refine (div_le_div_iff_of_pos_right ?_).mpr ?_
             simp
-            calc (m:ℝ) ≤ ∑ k ∈ Icc 1 n, ↑m ^ 1 := by
-                    simp
-                    by_cases H : m = 0
-                    subst H
-                    simp
-                    suffices (1:ℝ) * m ≤ n * m by simp at this; exact this
-                    apply mul_le_mul_of_nonneg
-                    tauto;simp;simp;simp
-                  _ ≤ _ := by
-                    apply sum_le_sum
-                    intro k hk
-                    simp at hk
-                    refine Bound.pow_le_pow_right_of_le_one_or_one_le ?_
-                    left
-                    constructor
-                    simp;tauto
-                    tauto
-        have : annuity.a n 0 = n := by unfold annuity.a;simp
-        by_cases H : ε < 1
-        have : annuity.a n (2 * n / ε - 1) < ε := by
+            linarith
+            simp
+    _ ≤ _ := by
+        suffices 1 ≤ 2 * n by
+            refine (one_div_le ?_ ?_).mp ?_
+            · simp
+            · simp
+              linarith
+            · simp
+              linarith
+        calc 1 ≤ n := by contrapose! hn;linarith
+                _ ≤ 2 * n := by omega
+
+lemma le_geom_self {n : ℕ} (hnr : ↑(n:ℝ) ≥ 1)
+  (m : ℕ) (hm : m ≥ 1) : (m:ℝ) ≤ ∑ k ∈ Icc 1 n, (m:ℝ) ^ k := by
+    calc (m:ℝ) ≤ ∑ k ∈ Icc 1 n, ↑m ^ 1 := by
+                simp
+                by_cases H : m = 0
+                · subst H
+                  simp
+                suffices (1:ℝ) * m ≤ n * m by simp at this; exact this
+                apply mul_le_mul_of_nonneg
+                tauto;simp;simp;simp
+    _ ≤ _ := by
+                apply sum_le_sum
+                intro k hk
+                simp at hk
+                refine Bound.pow_le_pow_right_of_le_one_or_one_le ?_
+                left
+                constructor
+                simp;tauto
+                tauto
+
+lemma yield_exists.small_epsilon {n : ℕ} (hn : n ≠ 0) {ε : ℝ} (hε : 0 < ε)
+    (hnr : (n:ℝ) ≥ 1) (hnr₀ : (n:ℝ) > 0)
+    (hnn₀ : n > 0) (H : ε < 1) :
+  ∃! i, i > -1 ∧ ε = annuity.a n i := by
+          have : annuity.a n (2 * n / ε - 1) < ε := by
             unfold annuity.a
-            have : ∑ k ∈ Icc 1 n, (1 + (2*n / ε - 1))⁻¹ ^ k
-                =  ∑ k ∈ Icc 1 n, (2*n / ε)⁻¹ ^ k := by
-                congr
-                ext k
-                congr
-                linarith
-            rw [this]
+            rw [add_sub_cancel]
             calc _ ≤  ∑ k ∈ Icc 1 n, (2*n / ε)⁻¹ := by
                     apply sum_le_sum
                     intro k hk
-                    have : (2*n / ε)⁻¹ ≤ 1 := by
-                        simp
-                        calc ε / (2*n) ≤ 1 / (2*n) := by
-                                refine div_mul_le_div_mul_of_div_le_div ?_ ?_
-                                refine (div_le_div_iff_of_pos_right ?_).mpr ?_
-                                simp
-                                linarith
-                                simp
-                             _ ≤ _ := by
-                                suffices 1 ≤ 2 * n by
-                                    refine (one_div_le ?_ ?_).mp ?_
-                                    simp
-                                    simp
-                                    linarith
-                                    simp
-                                    have : (n:ℝ) ≥ 1 := by simp;linarith
-                                    linarith
-                                calc 1 ≤ n := by contrapose! hn;linarith
-                                     _ ≤ 2 * n := by omega
-                    have : k ≥ 1 := by simp at hk;tauto
-                    have : 0 ≤ (2*n / ε)⁻¹ := by
+                    have h₁ : k ≥ 1 := by simp at hk;tauto
+                    have h₀ : 0 ≤ (2*n / ε)⁻¹ := by
                         simp
                         apply div_nonneg
                         linarith
                         simp
-                    apply pow_le_of_le_one
-                    tauto
-                    tauto
-                    linarith
+                    apply pow_le_of_le_one h₀ $ yield_exists.bound hn hε hnr hnn₀ H
+                    omega
                  _ < _ := by
-                    simp;ring_nf
                     simp
+                    ring_nf
                     field_simp
-                    tauto
-        have : (n:ℝ) ≥ 1 := by simp;omega
-        have : n / 1 ≤ n / ε := by
-            refine (div_le_div_iff₀ ?_ ?_).mpr ?_
-            simp
-            tauto
-            refine (mul_le_mul_iff_of_pos_left ?_).mpr ?_
-            linarith
-            linarith
-        simp at this
-        have ⟨i,hi⟩ := @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _ 0 (2 * n / ε - 1)
+                    simp
+          have : n / 1 ≤ n / ε := (div_le_div_iff₀ (by simp) hε).mpr
+                $ (mul_le_mul_iff_of_pos_left hnr₀).mpr (by linarith)
+          simp at this
+          have ⟨i,hi⟩ := @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _ 0 (2 * n / ε - 1)
             (by
                 calc (0:ℝ) ≤ 2 * n - 1 := by linarith
-                     _ ≤ _ := by field_simp;rw [← mul_div];linarith)
+                     _ ≤ _ := by
+                            field_simp;ring_nf
+                            suffices  (↑n * ε) * 2 ≤ ↑n * 2 by linarith
+                            suffices  (↑n * ε) ≤ ↑n by linarith
+                            exact (le_div_iff₀ hε).mp this
+                        )
                      (annuity.a n) (by
-                        have := @annuity_continuous
-                        apply @ContinuousOn.mono ℝ ℝ _ _ (annuity.a n)
-                        apply this
-                        exact (2 * ↑n / ε - 1)
+                        apply ContinuousOn.mono
+                        apply annuity_continuous (i := (2 * ↑n / ε - 1))
                         intro x hx
                         simp at hx ⊢
                         constructor
@@ -1045,242 +978,141 @@ noncomputable def a_inv_exists {n : ℕ} (hn : n ≠ 0) {ε : ℝ}
                         ) ε (by
                      simp
                      constructor <;> linarith)
-        simp at hi
-        use i
-        simp
-        constructor
-        constructor
-        linarith
-        tauto
-        intro y hy hyε
-        by_contra H
-        have : y < i ∨ i < y := lt_or_gt_of_ne H
-        cases this with
-        | inl h =>
-            have := @annuity.annuity_antitone n hn y i h hy
-            linarith
-        | inr h =>
-            have := @annuity.annuity_antitone n hn i y h (by linarith)
-            linarith
+          simp at hi
+          have hin : -1 < i := by linarith
+          use i
+          simp
+          constructor
+          · constructor
+            · linarith
+            · exact hi.2.symm
+          · apply yield_exists.y <;> tauto
 
+noncomputable def yield_exists {n : ℕ} (hn : n ≠ 0) {ε : ℝ}
+    (hε : 0 < ε) :
+    ∃! i > -1, ε = annuity.a n i := by
+        have hnr : (n:ℝ) ≥ 1 := by simp;omega
+        have hnr₀ : (n:ℝ) > 0 := by simp;omega
+        have hnn : n ≥ 1 := by omega
+        have hnn₀ : n > 0 := by omega
+        have hmm (m : ℕ) (hm : m ≥ 1) : annuity.a n (-1 + 1/m) ≥ m := by
+            unfold annuity.a
+            rw [add_neg_cancel_left, one_div, inv_inv]
+            simp
+            apply le_geom_self hnr m hm
+        have : annuity.a n 0 = n := by unfold annuity.a annuity.geom_sum;simp
+        by_cases H : ε < 1
+        · exact yield_exists.small_epsilon hn hε hnr hnr₀ hnn₀ H
         have : annuity.a n (2 * n - 1) < ε := by
             unfold annuity.a
+            rw [add_sub_cancel]
             simp at H
-            have :  ∑ k ∈ Icc 1 n, ((1:ℝ) + (2 * ↑n - 1))⁻¹ ^ k
-                =  ∑ k ∈ Icc 1 n, ( ((2:ℝ) * ↑n))⁻¹ ^ k := by
-                simp
-            rw [this]
-            have :  ∑ k ∈ Icc 1 n, ( ((2:ℝ) * ↑n))⁻¹ ^ k
-                ≤ ∑ k ∈ Icc 1 n, ( ((2:ℝ) * ↑n))⁻¹ := by
-                apply sum_le_sum
-                intro k hk
-                simp at hk
-                have :  ((2:ℝ) * ↑n)⁻¹ ≥ 0 := by
-                    positivity
-                refine pow_le_of_le_one ?_ ?_ ?_
-                linarith
-                suffices 1 ≤ 2 * (n:ℝ) by
-                    exact inv_le_one_of_one_le₀ this
-                calc _ ≤ (n:ℝ) := by linarith
-                     _ ≤ _ := by linarith
-                linarith
-
-            calc _ ≤ _ := this
+            calc _ ≤ _ := yield_exists.sum hn hnr
                  _ < (1:ℝ) := by
-                    rw [Finset.sum_const];simp;field_simp
-                    suffices (n:ℝ) < n * 2 by
-                        refine (div_lt_one₀ ?_).mpr this
-                        simp;omega
-                    linarith
+                    rw [Finset.sum_const]
+                    field_simp
+                    simp
+                    field_simp
+                    simp
                  _ ≤ _ := H
-        have ⟨m,hm⟩ : ∃ m : ℕ, m ≥ ε := exists_nat_ge ε
-
-        have ⟨i,hi⟩ := @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _
-            (-1 + 1/m) (2 * n - 1)
-            (by
-                suffices  (1:ℝ) / ↑m ≤ 2 * ↑n by linarith
-                apply le_trans
-                show (1:ℝ) / m ≤ 1
+        have ⟨m,hm⟩ := exists_nat_ge ε
+        have hbound:  (-1:ℝ) + 1 / ↑m ≤ 2 * ↑n - 1 := by
+            suffices (1:ℝ) / ↑m ≤ 2 * ↑n by linarith
+            apply le_trans
+            show (1:ℝ) / m ≤ 1
+            simp at H
+            apply le_trans $ one_div_le_one_div_of_le hε hm
+            · exact (div_le_one₀ hε).mpr H
+            linarith
+        have hcont : ContinuousOn (annuity.a n)
+            (Set.Icc (-1 + 1 / ↑m) (2 * ↑n - 1)) := by
+            apply ContinuousOn.mono
+            · apply annuity_continuous
+              exact 2*n-1
+            intro x hx
+            simp at hx ⊢
+            constructor
+            · exact yield_exists.x hε hm hx.1
+            · exact hx.2
+        have hrange : ε ∈ Set.Icc (annuity.a n (2 * ↑n - 1))
+                                  (annuity.a n (-1 + 1 / ↑m)) := by
+            simp
+            constructor
+            linarith
+            apply le_trans hm
+            specialize hmm m (by
                 simp at H
-                apply le_trans
-                show 1 / m ≤ 1 / ε
-                exact one_div_le_one_div_of_le hε hm
-                exact (div_le_one₀ hε).mpr H
-                apply le_trans
-                show (1:ℝ) ≤ n
-                simp;omega
-                apply le_trans
-                show (n:ℝ) ≤ 1 * (n:ℝ)
-                simp
-                refine mul_le_mul_of_nonneg_right ?_ ?_
-                simp
-                simp) (annuity.a n) (by
-
-                have := @annuity_continuous
-                apply ContinuousOn.mono
-                apply this
-                exact 2*n-1
-                intro x hx
-                simp at hx ⊢
-                constructor
-                calc -1 < -1 + (m:ℝ)⁻¹ := by
-                        refine lt_neg_add_iff_add_lt.mpr ?_
-                        simp only [add_neg_cancel, inv_pos]
-                        linarith
-                     _  ≤ x := by linarith
-                tauto
-                ) ε
-            (by
-                simp
-                constructor
-                linarith
-                apply le_trans hm
-                specialize hmm m (by
-                    simp at H
-                    have : (1:ℝ) ≤ m := by linarith
-                    simp at this
-                    tauto)
-                simp at hmm
-                convert hmm)
+                have : (1:ℝ) ≤ m := by linarith
+                simp at this
+                tauto)
+            simp at hmm
+            exact hmm
+        have ⟨i,hi⟩ := @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _
+            (-1 + 1/m) (2 * n - 1) hbound (annuity.a n) hcont ε hrange
         simp at hi this
+        have hin : -1 < i := by
+            calc -1 < -1 + (m:ℝ)⁻¹ := by
+                  refine lt_neg_add_iff_add_lt.mpr ?_
+                  simp only [add_neg_cancel, inv_pos]
+                  linarith
+            _  ≤ i := by linarith
         use i
         simp
         constructor
-        constructor
-        calc -1 < -1 + (m:ℝ)⁻¹ := by
-                    refine lt_neg_add_iff_add_lt.mpr ?_
-                    simp only [add_neg_cancel, inv_pos]
-                    linarith
-                _  ≤ i := by linarith
-
-        tauto
-        intro y hy hyε
+        · exact ⟨yield_exists.x hε hm hi.1.1, hi.2.symm⟩
+        have := @yield_exists.y
+        intro y hyn hyε
         by_contra H
         have : y < i ∨ i < y := lt_or_gt_of_ne H
         cases this with
         | inl h =>
-            have := @annuity.annuity_antitone n hn y i h hy
+            have := annuity.annuity_antitone hn h hyn
             linarith
         | inr h =>
-            have := @annuity.annuity_antitone n hn i y h (by
-                calc -1 < -1 + (m:ℝ)⁻¹ := by
-                            refine lt_neg_add_iff_add_lt.mpr ?_
-                            simp only [add_neg_cancel, inv_pos]
-                            linarith
-                        _  ≤ i := by linarith)
+            have := annuity.annuity_antitone hn h hin
             linarith
 
 /-- Inverse of the annuity function. -/
-noncomputable def a_inv {n : ℕ} (hn : n ≠ 0) :
-    Set.Ioc (0:ℝ) n →  ℝ :=
-    fun ε => (a_inv_exists hn ε.2.1).choose
+noncomputable def yield {n : ℕ} (hn : n ≠ 0) :
+    Set.Ioi (0:ℝ) →  ℝ :=
+    fun ε => (yield_exists hn ε.2).choose
 
-lemma sub_nat_real {n : ℕ} (hn : n ≥ 2) {i : ℝ} {d : ℝ}
-  (hd₁ : d ≤ ↑n) (h : annuity.duration_equation n i i d) : d - 1 ≤ ↑(n - 1) := by
+
+
+
+
+/-- Now we can rename yield to annuity_equivalence.invFun -/
+noncomputable def annuity_equivalence (n : ℕ) (hn : n ≥ 2) : Equiv (Set.Ioi (-1:ℝ)) (Set.Ioi (0:ℝ)) := {
+    toFun := fun i =>
+        ⟨annuity.a n i, annuity.annuity_positive (by linarith) i.2⟩
+    invFun := fun x =>
+        ⟨@yield n (by linarith) x, (yield_exists (by linarith) x.2).choose_spec.1.1⟩
+    left_inv := by
+        intro i
         simp
-        convert hd₁
-        obtain ⟨m,hm⟩ : ∃ m, n = m + 2 := Nat.exists_eq_add_of_le' hn
-        subst hm
+        have := (@yield_exists n (by linarith)
+            (annuity.a n i) (annuity.annuity_positive (by linarith) i.2)).choose_spec
+        simp at this ⊢
+        symm
+        refine SetCoe.ext ?_
+        unfold yield
+        simp at this ⊢
+        apply this.2
+        exact i.2
+        rfl
+    right_inv := by
+        intro x
+        have := (@yield_exists n (by linarith) x x.2).choose_spec
+        simp at this ⊢
+        symm
+        refine SetCoe.ext ?_
+        convert this.1.2
+        unfold yield
         simp
-        linarith
+}
 
-/-- Perhaps surprisingly:
-Let i be the implied interest rate for an n-period
-par bond of duration d.
-Then the PV of an (n-1)-period unit-payment annuity with rate i is d-1.
-This lets us compute `i` from `n` and `d`.
- -/
-lemma eq_CPT_I_from_D_par
-    {n : ℕ} (hn : n ≥ 2 ) -- if n=1, then D=n and we can't infer i.
-    {i : ℝ} (hi : i > 0)
-    {d : ℝ} (hd : 0 < d - 1)
-    (hd₁ : d ≤ n) -- can deduce this from `h`
-    (h :  annuity.duration_equation n i i d) :
-    i = a_inv (by show n-1 ≠ 0;contrapose! hn;omega)
-        ⟨d - 1, ⟨hd, sub_nat_real hn hd₁ h⟩⟩ := by
-    have ⟨j,hj⟩ := @a_inv_exists n (by linarith) i hi
-    unfold annuity.duration_equation annuity.bond_price at h
-    rw [congrFun $ annuity.a_eq_a_formula (by linarith) (by linarith)] at h
-    unfold annuity.a_formula annuity.Ia at h
-    have := @id_mul_geom_sum₁ (1+i)⁻¹ (by
-        intro hc;simp at hc;subst hc;simp at hi) n
-    rw [this] at h
-    clear this
-    have : i ≠ 0 := by linarith
-    set v := (1+i)⁻¹
-    have hv₂ : (v - 1) ^ 2 ≠ 0 := by
-        unfold v
-        simp
-        intro hc
-        have : (1 + i)⁻¹ = 1 := by linarith
-        have : (1 + i) = 1 := by field_simp at this;rw [this];simp
-        linarith
-    rw [mul_comm i] at h
-    rw [div_mul] at h
-    field_simp at h
-    have h₀ :
-        - (i * v) * (
-            ↑n * v ^ (n + 1)
-            - (↑n + 1) * v ^ n
-            + 1)
-        + (d - ↑n * v ^ n) * (v - 1) ^ 2
-        = 0 := by
-        linarith
-    have : i * v = 1 - v := by
-        unfold v
-        field_simp
-    rw [this] at h₀
-    have : -1 * ((v - 1) * (- (d * v) + d + v^n - 1)) = 0 := by
-        ring_nf at h₀ this
-        linarith
-    have : v - 1 ≠ 0 := by contrapose! hv₂;rw [hv₂];simp
-    have : (v - 1) * (- (d * v) + d + v^n - 1) = 0 := by
-        linarith
-    have : (- (d * v) + d + v^n - 1) = 0 := by
-        apply (mul_eq_zero_iff_left _).mp this
-        tauto
-    have : d + v^n - (d * v) - 1 = 0 := by
-        linarith
-    have : v^n - d * v + d - 1 = 0 := by
-        linarith
-    have : (v^n - d * v + d - 1) / (v - 1) = 0 := by
-        rw [this]
-        simp
-    obtain ⟨t,ht⟩ : ∃ m, n = m + 2 := Nat.exists_eq_add_of_le' hn
-    obtain ⟨m,hm⟩ : ∃ m, n = m + 1 := by
-        use t+1
-    subst hm
-    have hw : (v^(m+1) - d * v + d - 1) = (v - 1) * (annuity.a m i - d + 1) := by
-        have : v ^ (m+1) = v^m * v := rfl
-        rw [this]
-        rw [sub_mul]
-        have := congrFun $ @annuity.a_eq_a_formula i (by linarith) (by linarith)
-        rw [this]
-        unfold annuity.a_formula v
-        field_simp
-        ring_nf
-    have : (annuity.a m i - d + 1) = 0 := by
-        rw [hw, mul_comm] at this
-        rw [← this]
-        field_simp
-    simp at hj
-    have : annuity.a m i = d - 1 := by linarith
-    have := (@a_inv_exists (m) (by linarith) (d-1) (by
-        linarith
-        )).choose_spec
-
-    simp at this
-    have := this.2 i (by linarith) (by tauto)
-    simp_rw [this]
-    unfold a_inv
-    simp
-
-
-
-
-
--- lemma a_inv_is_inverse  (n : ℕ) (hn : n ≠ 0) (ε :Set.Icc (0:ℝ) n) :
---     Function.LeftInverse (a_inv n hn) (fun i => ⟨ite (0 ≤ i) (annuity.a n i) 0, by
+-- lemma yield_is_inverse  (n : ℕ) (hn : n ≠ 0) (ε :Set.Icc (0:ℝ) n) :
+--     Function.LeftInverse (yield n hn) (fun i => ⟨ite (0 ≤ i) (annuity.a n i) 0, by
 --         simp
 --         constructor
 --         by_cases H : 0 ≤ i
@@ -1373,7 +1205,7 @@ lemma PMT_eq_CPT_PMT {IY PMT PV FV : ℝ} {N : ℕ}
   unfold annuity_equation at h
   have : annuity.a N (IY / 100) ≠ 0 := by
     by_cases H : IY = 0
-    · unfold annuity.a
+    · unfold annuity.a annuity.geom_sum
       subst H
       simp
       tauto
@@ -1385,13 +1217,24 @@ lemma PMT_eq_CPT_PMT {IY PMT PV FV : ℝ} {N : ℕ}
     constructor
     · field_simp
       contrapose! H
-      have : 100 ^ N / (100 + IY) ^ N
-        = (100 / (100 + IY)) ^ N := by ring_nf
-      rw [this] at H
-      have : (100 / (100 + IY)) ^ N = 1 ^ N := by field_simp;linarith
-      have : 100 / (100 + IY) = 1 := by
-        apply PMT_eq_CPT_PMT.aux <;> tauto
-      grind
+      have : ((100 + IY) / 100) ^ N ≠ 0 := by
+        simp
+        intro hh
+        exfalso
+        linarith
+      field_simp at H
+      simp at H
+      ring_nf at H
+      have : (1 + IY * (1 / 100)) ^ N = 1 := by linarith
+      have : (1 + IY * (1 / 100)) = 1 := by
+        have h₀ : (1 + IY * (1 / 100)) > 0 := by
+            linarith
+        generalize (1 + IY * (1 / 100)) = α at *
+        apply (pow_eq_one_iff_of_nonneg _ _).mp this
+        linarith
+        exact hN
+
+      linarith
     · tauto
   unfold CPT_PMT
   grind
@@ -1516,9 +1359,9 @@ theorem CPT_N_satisfies {IY PMT PV FV : ℝ} (N : ℕ)
   simp
   generalize IY / 100 = i at *
   rw [exp_log hIY]
+  have : PMT - i * FV ≠ 0 := by rw [mul_comm];tauto
   field_simp
   ring_nf
-
   intro hann
   unfold annuity_equation at hann
   have := congrFun (@annuity.a_eq_a_formula (IY / 100) (by linarith) (by linarith)) N
@@ -1531,6 +1374,7 @@ theorem CPT_N_satisfies {IY PMT PV FV : ℝ} (N : ℕ)
   field_simp at hann
   have : PV * i + PMT  - (PMT - FV * i) * x = 0 := by
     linarith
+  have h_nonpar' : PMT - i * FV ≠ 0 := by contrapose! h_nonpar;linarith
   have : x = (PV * i + PMT) / (PMT - FV * i) := by
     field_simp
     linarith
@@ -1552,6 +1396,7 @@ theorem CPT_FV_satisfies {IY PMT PV : ℝ} {N : ℕ} (hIY : IY > -100):
   rw [div_mul]
   generalize (1 + i)⁻¹ ^ N = α at *
   field_simp
+  linarith
 
 theorem CPT_PMT_satisfies {IY PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
  (hIY : IY > -100) :
@@ -1569,7 +1414,7 @@ theorem CPT_PMT_satisfies {IY PV FV : ℝ} {N : ℕ} (hN : N ≠ 0)
 PMT = CPT_PMT or any other PMT value. -/
 theorem CPT_PMT_satisfies_when_PV_eq_zero {FV PMT : ℝ} {N : ℕ} (hN : N ≠ 0) :
     annuity_equation (-100) PMT 0 FV N := by
-  simp [annuity_equation, annuity.a]
+  simp [annuity_equation, annuity.a, annuity.geom_sum]
   rw [zero_pow_eq_zero.mpr hN]
   simp
   right
