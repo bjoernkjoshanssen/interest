@@ -9,6 +9,14 @@
 	\lean{sum_pow}
 	\leanok
 	
-	Given (n : ℕ) {x : ℝ} (hx : x ≠ 1), we have
-    ∑ i ∈ range n, x^i = (x ^ n - 1) / (x - 1).
+	Given $n \in \mathbb N$ and $x \in \mathbb R$ with $x \ne 1$, we have
+    $\sum_{i=0}^{n-1} x^i = \frac{x^n - 1}{x - 1}$.
+\end{lemma}
+
+\begin{lemma}\label{sum_pow_interest}
+	\lean{sum_pow_interest}
+	\leanok
+	\uses{sum_pow}
+	Given $n\in\mathbb N$ and $i\in\mathbb R$ with $i \ne 0$ and $1 + i \ne 0$,
+  we have $\sum_{k=0}^n (1+i)^{-k}-1= \frac{1 - (1 + i)^{-n}}i$.
 \end{lemma}
