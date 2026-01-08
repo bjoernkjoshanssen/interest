@@ -5,3 +5,10 @@
 % If you want to split the blueprint content into several files then
 % the current file can be a simple sequence of \input. Otherwise It
 % can start with a \section or \chapter for instance.
+\begin{lemma}\label{sum_pow}
+	\lean{sum_pow}
+	\leanok
+	
+	Given (n : ℕ) {x : ℝ} (hx : x ≠ 1), we have
+    ∑ i ∈ range n, x^i = (x ^ n - 1) / (x - 1).
+\end{lemma}
