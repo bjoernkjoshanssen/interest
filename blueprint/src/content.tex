@@ -81,10 +81,7 @@ Could ask Aristotle for a single proof of that.
 	\lean{eq_CPT_N_from_D_I}
 	\leanok
 	
-Given {n : ℕ} (hnn : n > 1)
-    {i d r : ℝ} (hd : 0 < d) (hi : i > 0) (hi' : i < 1)
-    (hr : 0 < r) (hdi : d < 1 + 1 / i)
-    (hann : duration_equation n i r d) :
-    n = @CPT_N_from_D i d r hd hi (by linarith) hdi
+Given $n\in\mathbb N$ with $n>1$ and $i,d,r$ positive real numbers,	 with  $d < 1 + 1 / i$,
+ if the duration equation holds for $n,i,r,d$ then $n$ is given by \verb!CPT_N_from_D i d r hd hi (by linarith) hdi!.
 \end{theorem}
 

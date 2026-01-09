@@ -601,7 +601,7 @@ noncomputable def CPT_N_from_D {i d r : ℝ} (hd : 0 < d) (hi : i > 0)
     exact (@AriMagic.unique_solution_n i d r hd hi hr hdi).choose
 
 lemma eq_CPT_N_from_D_I {n : ℕ} (hnn : n > 1)
-    {i d r : ℝ} (hd : 0 < d) (hi : i > 0) (hi' : i < 1)
+    {i d r : ℝ} (hd : 0 < d) (hi : i > 0)
     (hr : 0 < r) (hdi : d < 1 + 1 / i)
     (hann : duration_equation n i r d) :
     n = @CPT_N_from_D i d r hd hi (by linarith) hdi := by
