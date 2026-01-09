@@ -20,3 +20,71 @@
 	Given $n\in\mathbb N$ and $i\in\mathbb R$ with $i \ne 0$ and $1 + i \ne 0$,
   we have $\sum_{k=0}^n (1+i)^{-k}-1= \frac{1 - (1 + i)^{-n}}i$.
 \end{lemma}
+
+\begin{lemma}\label{id_mul_geom_sum}
+\lean{id_mul_geom_sum}
+\leanok
+ Given (x : ℝ) (hx : x ≠ 1) (n : ℕ), we have
+  $∑ k ∈ Finset.range (n+1), k * x^k =
+  (x * (n * x^(n + 1) - ((n + 1) * x^n) + 1))/(x - 1)^2$.
+\end{lemma}
+
+\begin{lemma}\label{sum_Icc_succ_eq_sum_range}
+	\lean{sum_Icc_succ_eq_sum_range}
+	\leanok
+	Given (f : ℕ → ℝ) (n : ℕ), we have
+  $f 0 + ∑ k ∈ Finset.Icc 1 n, f k
+    = ∑ k ∈ Finset.range (n+1), f k$.
+\end{lemma}
+
+\begin{lemma}\label{id_mul_geom_sum₁}
+	\lean{id_mul_geom_sum₁}
+	\leanok
+	\uses{sum_Icc_succ_eq_sum_range,id_mul_geom_sum}
+Given	(x : ℝ) (hx : x ≠ 1) (n : ℕ), we have
+	$∑ k ∈ Finset.Icc 1 n, k * x^k =
+	  (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2$.
+\end{lemma}
+
+\begin{definition}\label{geom_sum}
+	\lean{geom_sum}
+	\leanok
+	$\mathrm{geom_sum}$ is the function : ℕ → ℝ → ℝ := fun n v =>
+	  $∑ k ∈ Icc 1 n, v ^ k$.
+\end{definition}
+
+\begin{definition}\label{annuity.a}
+	\lean{a}
+	\leanok
+	\uses{geom_sum}
+	 a : ℕ → ℝ → ℝ := fun n i =>
+	  $geom_sum n (1 + i)⁻¹$
+\end{definition}
+
+Main result: if $r > i$ and $d < 1 + 1 / i$ then we can recover $n$ (maturity) from $D$ (duration) and $r$ and $i$.
+But actually $d < 1 + 1 / i$ follows from $r > i$.
+If $r < i$ then we can only if $d < 1 + 1 / i$, which indeed does not hold in the graph in Chan and Tse.
+From \texttt{AriExtremum.lean}, when $r<i$ and $d>1+1/i$ (``deep discount'') there is a unique local extremum
+and we cannot infer $n$ from $D$ except at the extremum.
+
+\begin{tabular}{ l l l}
+			  & $r<i$											& $r > i$	\\
+$d < 1 + 1/i$ &	can recover (\emph{unique\_solution})			& can recover (\emph{final\_result})\\
+$d > 1 + 1/i$ &	cannot recover (\emph({AriExtremum.lean}, Chan and Tse figure))		& impossible by \emph{Aristotle\_duration.lean}\\
+\end{tabular}
+
+Combining these results the requirement is that $d < 1 + 1 / i$ overall.
+Could ask Aristotle for a single proof of that.
+
+\begin{theorem}
+	\label{eq_CPT_N_from_D_I}
+	\lean{eq_CPT_N_from_D_I}
+	\leanok
+	
+Given {n : ℕ} (hnn : n > 1)
+    {i d r : ℝ} (hd : 0 < d) (hi : i > 0) (hi' : i < 1)
+    (hr : 0 < r) (hdi : d < 1 + 1 / i)
+    (hann : duration_equation n i r d) :
+    n = @CPT_N_from_D i d r hd hi (by linarith) hdi
+\end{theorem}
+
