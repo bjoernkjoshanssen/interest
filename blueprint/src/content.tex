@@ -1,3 +1,76 @@
+    Calculators such as the BA II Plus Professional are used by actuaries to make critical decisions. Consequently, formal verification of the underlying mathematics is important.
+
+    The Annuity Equation is a staple of actuarial science and financial mathematics, relating a payment [PMT], present value [PV], future value [FV], interest rate [I/Y], and number of periods [N]. The BA II Plus Professional calculator allows a solution for any one of these five variables given the others, using keystrokes such as [CPT] [PMT].
+    Using the Lean proof assistant, we verify the unique solvability of the Annuity Equation for each variable under a non-par bond assumption.
+
+
+The Annuity Equation is often left implicit in textbooks on financial mathematics such as \cite{ChanTse2021_finmath}. Nevertheless it can be considered well known. It is as follows.
+\[
+\mathrm{[PV]} + \mathrm{[PMT]}\cdot \sum_{k=1}^{\mathrm{[N]}} (1 + (\mathrm{[I/Y]}/100))^{-k} + \mathrm{[FV]} \cdot (1 + \mathrm{[I/Y]}/100)^{-\mathrm{[N]}} = 0.
+\]
+This form gives the impression that division $x \mapsto x^{-1}$ is necessary, but the equation can also be stated in a future value perspective that makes sense over a ring:
+\[
+\mathrm{[PV]}\cdot (1 + \mathrm{[I/Y]}/100)^{\mathrm{[N]}} + \mathrm{[PMT]}\cdot \sum_{k=0}^{\mathrm{[N]-1}} (1 + (\mathrm{[I/Y]}/100))^{k} + \mathrm{[FV]} = 0.
+\]
+Of course, dividing (by 100) is indicative of a \emph{field}, but it is an artifact of social expectations and we can just as easily state everything in terms of an interest rate $i$, obtaining an equation for a \emph{ring}:
+\[
+\mathrm{[PV]}\cdot (1 + i)^{\mathrm{[N]}} + \mathrm{[PMT]}\cdot \sum_{k=0}^{\mathrm{[N]-1}} (1 +i)^{k} + \mathrm{[FV]} = 0.
+\]
+
+Another form is
+\[
+\alpha + \beta (1-v^n)/i + \gamma v^n = 0
+\]
+More symmetrically,
+\[
+\alpha v^{-n/2} + \beta (v^{-n/2}-v^{n/2})/i + \gamma v^{n/2} = 0
+\]
+In terms of $x=v^{-n/2}>0$,
+\[
+\alpha x + \frac{\beta (x-x^{-1})}i + \gamma x^{-1} = 0
+\]
+Solving for $x$,
+\[
+\alpha x^2 + \frac{\beta(x^2-1)}i + \gamma = 0
+\]
+\[
+(\alpha + \beta/i)x^2 = \beta/i - \gamma
+\]
+\[
+0 < x^2 = \frac{\beta/i-\gamma}{\beta/i+\alpha}
+\]
+This inequality is (unsurprisingly) also encountered in our Lean code.
+
+Note that PMT/i is the perpetuity-equivalent principal, and we are saying it must be on the same side (left or right) of both FV and -PV.
+
+
+
+Annuity feasibility inequality
+or
+Identifiability condition for maturity in level-payment cash flows: It’s not a “new inequality” in the sense of mathematics, but it is a very clean formulation of something practitioners assume without stating.
+
+If PMT/i is above FV then it should mean that the coupon rate $r>i$ (the yield rate), i.e., the coupon rate is high.
+But then PMT/i should also be above -PV, i.e., receiving these infintely many coupons is more valuable than what the actual contract is, i.e., receiving coupons for a while and then the redemption value.
+
+Conversely, if PMT/i is below FV then the coupons are meager. Then PMT/i should also be below -PV, i.e., receiving these coupons forever is less valuable than the actual contract.
+
+ChatGPT says it is essentially the comparison theorem for cash-flow streams hiding inside the annuity equation
+
+Another way to look at it is that if PMT/i is above -PV, it means that the price of the bond is less than getting infinitely many coupons starting now; but since both of these deals involve getting the coupons at least until time $n$, it means getting the future value is less than getting infinitely many coupons from the point of view of the future time $n$.
+
+Here's another way to look at it. If PMT/i > -PV, it means the bond (B) is worth less than the perpetuity (P). Now let's fast forward to time n. Both securities B and P have made the same payments so far. What's left? Only FV for the bond, and another PMT/i for P! So, by a monotonicity principle, PMT/i > FV as well.
+
+\emph{If a perpetuity dominates a finite bond today, then it must also dominate the bond’s redemption value once all common coupons have been stripped away.}
+
+In other words, if $C_t$ and $D_t$ are infinite cash flows streams and $C_t=D_t$ for all $t< t_0$, and $PV(C)>PV(D)$, and
+$C^{(t)}$ is the security where all payments before $t$ are removed, then $PV(C^{(t_0)})>PV(D^{(t_0)}$ as well.
+
+
+The Annuity Equation has apparently been implemented in financial calculators since their introduction half a century ago (June 13, 1976 for the original Texas Instruments Business Analyst).
+Here we formalize the fact you can solve for any of these five variables given the other four. This is rather explicit for PV, FV, PMT, and N, but requires Newton's method for I/Y (interest per year). However, our proof is mathematical and does not concern itself with computability. It instead sticks to mathematical existence and uniqueness.
+
+
+
 % In this file you should put the actual content of the blueprint.
 % It will be used both by the web and the print version.
 % It should *not* include the \begin{document}
@@ -46,8 +119,8 @@ Given	(x : ℝ) (hx : x ≠ 1) (n : ℕ), we have
 	  (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2$.
 \end{lemma}
 
-\begin{definition}\label{geom_sum}
-	\lean{geom_sum}
+\begin{definition}\label{annuity.geom_sum}
+	\lean{annuity.geom_sum}
 	\leanok
 	$\mathrm{geom_sum}$ is the function : ℕ → ℝ → ℝ := fun n v =>
 	  $∑ k ∈ Icc 1 n, v ^ k$.
@@ -85,3 +158,6 @@ Given $n\in\mathbb N$ with $n>1$ and $i,d,r$ positive real numbers,	 with  $d < 
  if the duration equation holds for $n,i,r,d$ then $n$ is given by \verb!CPT_N_from_D i d r hd hi (by linarith) hdi!.
 \end{theorem}
 
+
+\bibliographystyle{plain}
+\bibliography{cited}
