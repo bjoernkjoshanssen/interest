@@ -54,11 +54,11 @@ Given	(x : ℝ) (hx : x ≠ 1) (n : ℕ), we have
 \end{definition}
 
 \begin{definition}\label{annuity.a}
-	\lean{a}
+	\lean{annuity.a}
 	\leanok
-	\uses{geom_sum}
-	 a : ℕ → ℝ → ℝ := fun n i =>
-	  $geom_sum n (1 + i)⁻¹$
+	\uses{annuity.geom_sum}
+	The present value of annuity function $a : \mathbb N \to \mathbb R \to \mathbb R$
+	is defined by $a n i$ equals \verb!geom_sum! $n (1 + i)^{-1}$.
 \end{definition}
 
 Main result: if $r > i$ and $d < 1 + 1 / i$ then we can recover $n$ (maturity) from $D$ (duration) and $r$ and $i$.
@@ -74,7 +74,7 @@ $d > 1 + 1/i$ &	cannot recover (\emph({AriExtremum.lean}, Chan and Tse figure))	
 \end{tabular}
 
 Combining these results the requirement is that $d < 1 + 1 / i$ overall.
-Could ask Aristotle for a single proof of that.
+Aristotle provided a single proof of that.
 
 \begin{theorem}
 	\label{eq_CPT_N_from_D_I}
