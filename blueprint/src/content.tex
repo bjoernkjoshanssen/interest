@@ -78,10 +78,18 @@ Here we formalize the fact you can solve for any of these five variables given t
 % If you want to split the blueprint content into several files then
 % the current file can be a simple sequence of \input. Otherwise It
 % can start with a \section or \chapter for instance.
+\begin{lemma}\label{sub_ne_zero_of_ne}
+	\lean{sub_ne_zero_of_ne}
+	\href{https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Group/Basic.html#sub_ne_zero_of_ne}
+	{\texttt{sub\_ne\_zero\_of\_ne}}
+	
+	If $a\ne b$ then $a-b\ne 0$.
+\end{lemma}
+
 \begin{lemma}\label{sum_pow}
 	\lean{sum_pow}
 	\leanok
-	
+	\uses{sub_ne_zero_of_ne}
 	Given $n \in \mathbb N$ and $x \in \mathbb R$ with $x \ne 1$, we have
     $\sum_{i=0}^{n-1} x^i = \frac{x^n - 1}{x - 1}$.
 \end{lemma}
@@ -149,10 +157,17 @@ $d > 1 + 1/i$ &	cannot recover (\emph({AriExtremum.lean}, Chan and Tse figure))	
 Combining these results the requirement is that $d < 1 + 1 / i$ overall.
 Aristotle provided a single proof of that.
 
+\begin{lemma}\label{AriMagic.exists_pos_root_of_limits}
+	\lean{AriMagic.exists_pos_root_of_limits}
+	\leanok
+If a continuous function starts positive at 0 and tends to a negative limit, it has a positive root.
+\end{lemma}
+
 \begin{theorem}
 	\label{eq_CPT_N_from_D_I}
 	\lean{eq_CPT_N_from_D_I}
 	\leanok
+	\uses{AriMagic.unique_solution_n,id_mul_geom_sum₁,AriMagic.exists_pos_root_of_limits}
 	
 Given $n\in\mathbb N$ with $n>1$ and $i,d,r$ positive real numbers,	 with  $d < 1 + 1 / i$,
  if the duration equation holds for $n,i,r,d$ then $n$ is given by \verb!CPT_N_from_D i d r hd hi (by linarith) hdi!.

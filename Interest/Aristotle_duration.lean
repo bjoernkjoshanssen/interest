@@ -14,7 +14,8 @@ for n > 1, i > 0, 0 < r < 1, and d > 1.
 The proof utilizes geometric series summation formulas and algebraic manipulation.
 -/
 
-import Mathlib
+import Mathlib.Algebra.Field.GeomSum
+import Mathlib.Analysis.RCLike.Basic
 
 set_option linter.mathlibStandardSet false
 

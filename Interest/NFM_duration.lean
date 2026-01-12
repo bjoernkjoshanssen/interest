@@ -1,16 +1,8 @@
-import Mathlib.Algebra.EuclideanDomain.Field
-import Mathlib.Analysis.SpecialFunctions.Log.Basic
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
-import Mathlib.Analysis.Convex.Deriv
-import Mathlib.Analysis.Calculus.FDeriv.Pow
-import Mathlib.Analysis.Calculus.Deriv.Pow
 import Interest.Aristotle_CPT_I
--- import Interest.Aristotle_CPT_N
 import Interest.Aristotle_duration -- to eliminate d < 1 + 1/i assumption in Aristotle_CPT_N
 import Interest.AristotleMagic
 import Interest.NFM
-import Mathlib.Topology.Algebra.Group.Defs
--- import Interest.AristotleDeriv
+
 /-!
 
 ## Five implicit functions from the Annuity Equation: duration version
@@ -430,7 +422,7 @@ lemma eq_CPT_I_from_D_maturity {n : ℕ} (hnn : n ≥ 2)
   set v := (1+i)⁻¹
   let F := fun v => d * annuity.bond_price_sum n r v -
       (r * annuity.id_mul_geom_sum n v + ↑n * v ^ n)
-  have ⟨v,hv⟩ := @unique_root_f n hnn d r hd hr
+  have ⟨v,hv⟩ := @unique_root_f n hnn d r hd.1 hd.2 hr
   use 1/v-1
   simp [f] at hv ⊢
   constructor

@@ -14,7 +14,8 @@ Using the Intermediate Value Theorem and the strict monotonicity, we established
 We also verified that the root is greater than 1, as f(1) > 0.
 -/
 
-import Mathlib
+import Mathlib.Analysis.SpecialFunctions.Pow.Deriv
+import Mathlib.Tactic.Cases
 
 set_option linter.mathlibStandardSet false
 
@@ -63,13 +64,26 @@ lemma f_eq_simplified (i d r n : ℝ) (hi : i ≠ 0) (hv : v_def i ≠ 0) :
   · unfold v_def at hv; aesop;
   · grind
 
-
-lemma C_neg (i d r : ℝ) (hi : 0 < i) (hr : 0 < r) (hdi : d < 1 + 1 / i) :
+/-- After some work I removed the assumption i>0 here. -/
+lemma C_neg (i d r : ℝ) (hi : i ≠ 0) (hr : 0 < r) (hdi : d * i < 1 + i) :
   C i d r < 0 := by
     unfold C;
     unfold v_def;
     field_simp at *;
-    nlinarith [ mul_pos hr hi ]
+    suffices -(r * (d * i - (1 + i)) / i ^ 2 ) > 0 by
+      exact Left.neg_pos_iff.mp this
+    have : i^2 ≠ 0 := by exact pow_ne_zero 2 hi
+    have : -(r * (d * i - (1 + i)) / i ^ 2)
+     = (r * ((1 + i) - d * i) / i ^ 2) := by
+      field_simp
+      ring_nf
+    rw [this]
+    apply mul_pos
+    apply mul_pos
+    tauto
+    linarith
+    simp
+    exact pow_two_pos_of_ne_zero hi
 
 /-
 The derivative of f is v^n * g(n).
@@ -81,11 +95,11 @@ noncomputable def g (i d r n : ℝ) : ℝ :=
   let L := Real.log v
   S * L * n + K * L + S
 
-lemma f_deriv (i d r n : ℝ) (hi : 0 < i) :
+lemma f_deriv (i d r n : ℝ) (hi : i ≠ 0) (hi' : 1 + i > 0) :
   HasDerivAt (f i d r) (v_def i ^ n * g i d r n) n := by
   -- Start by using the definition of f with the simplified form.
   have h_f_simplified : ∀ n, f i d r n = C i d r + (v_def i)^n * (S i r * n + K i d r) := by
-    intro n; rw [ f_eq_simplified i d r n hi.ne' ] ; ring_nf;
+    intro n; rw [ f_eq_simplified i d r n hi ] ; ring_nf;
     exact inv_ne_zero ( by positivity );
   rw [ show f i d r = _ from funext h_f_simplified ] ; convert HasDerivAt.add ( hasDerivAt_const _ _ ) ( HasDerivAt.mul ( HasDerivAt.rpow ( hasDerivAt_const _ _ ) ( hasDerivAt_id' n ) _ ) ( HasDerivAt.add ( HasDerivAt.mul ( hasDerivAt_const _ _ ) ( hasDerivAt_id' n ) ) ( hasDerivAt_const _ _ ) ) ) using 1 <;> norm_num ; ring_nf!;
   · unfold g; ring;
@@ -140,12 +154,14 @@ lemma g_at_most_one_root (i d r : ℝ) (hi : 0 < i) (hr : 0 < r) :
   have h_subsingleton : ∀ n1 n2 : ℝ, g i d r n1 = 0 → g i d r n2 = 0 → n1 = n2 := by
     intros n1 n2 hn1 hn2
     have h_logv_ne_zero : Real.log (v_def i) ≠ 0 := by
-      exact ne_of_lt ( Real.log_neg ( by exact inv_pos.mpr ( by linarith ) ) ( by exact inv_lt_one_of_one_lt₀ ( by linarith ) ) );
+      exact ne_of_lt (Real.log_neg (inv_pos.mpr (by linarith))
+        (inv_lt_one_of_one_lt₀ (by linarith)))
     unfold g at *;
     unfold S K at *;
     by_cases h : r / i = 1 <;> simp_all +decide;
     · cases hn1 <;> linarith;
-    · exact mul_left_cancel₀ ( show ( r / i - 1 ) * Real.log ( v_def i ) ≠ 0 from mul_ne_zero ( sub_ne_zero_of_ne h ) ( by aesop ) ) ( by linarith );
+    · exact mul_left_cancel₀ ( show ( r / i - 1 ) * Real.log ( v_def i ) ≠ 0 from
+            mul_ne_zero ( sub_ne_zero_of_ne h ) ( by aesop ) ) ( by linarith );
   tauto
 
 /-
@@ -357,23 +373,21 @@ lemma at_most_one_root_of_single_critical_point
 /-
 There exists a unique positive real number n satisfying the equation.
 -/
-theorem unique_solution_n (i d r : ℝ)
-  (hd : 0 < d) (hi : 0 < i) (hr : 0 < r)
+theorem unique_solution_n (i d r : ℝ) (hd : 0 < d) (hi : 0 < i) (hr : 0 < r)
   (hdi : d < 1 + 1 / i) :
   ∃! n : ℝ, 0 < n ∧
     let v := (1 + i)⁻¹
     d * (r * ((1 - v ^ n) / i) + v ^ n) -
     (r * (v * (n * v ^ (n + 1) - (n + 1) * v ^ n + 1) / (v - 1) ^ 2) + n * v ^ n) = 0 := by
-      have h_cont : ContinuousOn (f i d r) (Set.Ici 0) := by
-        exact f_continuous i d r hi
+      have h_cont : ContinuousOn (f i d r) (Set.Ici 0) := f_continuous i d r hi
       have h_diff : ∀ x ∈ Set.Ioi 0, HasDerivAt (f i d r) (v_def i ^ x * g i d r x) x :=
-        fun x a ↦ f_deriv i d r x hi
+        fun x a ↦ f_deriv i d r x (by linarith) (by linarith)
       have h_start_pos : 0 < f i d r 0 := by
         unfold f; norm_num [ v_def ] ; exact hd
       have h_tendsto_neg : Filter.Tendsto (f i d r) Filter.atTop (nhds (C i d r)) := by
         exact f_tendsto_atTop i d r hi
       have h_lim_neg : C i d r < 0 := by
-        exact C_neg i d r hi hr hdi;
+        exact C_neg i d r (by linarith) hr (by field_simp at hdi;linarith)
       -- By definition of $f$, we know that $f$ has at most one positive critical point.
       have h_at_most_one_critical : Set.Subsingleton {x | 0 < x ∧ v_def i ^ x * g i d r x = 0} := by
         have h_at_most_one_critical : Set.Subsingleton {x | 0 < x ∧ g i d r x = 0} := by
@@ -384,11 +398,11 @@ theorem unique_solution_n (i d r : ℝ)
         exact fun x hx y hy => h_at_most_one_critical
           ⟨ hx.1, hx.2.resolve_left <| ne_of_gt <| Real.rpow_pos_of_pos ( inv_pos.mpr <| by linarith ) _ ⟩
           ⟨ hy.1, hy.2.resolve_left <| ne_of_gt <| Real.rpow_pos_of_pos ( inv_pos.mpr <| by linarith ) _ ⟩;
-      -- By definition of $f$, we know that $f$ has at most one positive root.
+      -- $f$ has at most one positive root.
       have h_at_most_one_root : Set.Subsingleton {x | 0 < x ∧ f i d r x = 0} := by
         apply at_most_one_root_of_single_critical_point
             h_cont h_diff h_start_pos h_tendsto_neg h_lim_neg h_at_most_one_critical;
-      -- By definition of $f$, we know that $f$ has at least one positive root.
+      -- $f$ has at least one positive root.
       have h_at_least_one_root : ∃ x > 0, f i d r x = 0 := by
         apply exists_pos_root_of_limits h_cont h_start_pos h_tendsto_neg h_lim_neg;
       exact ⟨ h_at_least_one_root.choose, h_at_least_one_root.choose_spec,

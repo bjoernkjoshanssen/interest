@@ -1,11 +1,5 @@
-import Mathlib.Algebra.EuclideanDomain.Field
-import Mathlib.Analysis.SpecialFunctions.Log.Basic
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
-import Mathlib.Analysis.Convex.Deriv
-import Mathlib.Analysis.Calculus.FDeriv.Pow
-import Mathlib.Analysis.Calculus.Deriv.Pow
-import Mathlib.Topology.Algebra.Group.Defs
--- import Interest.AristotleDeriv
+import Mathlib.Analysis.SpecialFunctions.Pow.Real -- Real.log
+
 /-!
 
 ## Five implicit functions from the Annuity Equation

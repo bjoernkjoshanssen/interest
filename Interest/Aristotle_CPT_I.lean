@@ -14,7 +14,10 @@ The proof proceeds by analyzing the auxiliary function h(v) = N(v)/D(v),
 showing it is strictly increasing and maps (0, ∞) to (1, n).
 -/
 
-import Mathlib
+import Mathlib.Analysis.Calculus.Deriv.Inv
+import Mathlib.Analysis.Calculus.Deriv.MeanValue
+import Mathlib.Analysis.Calculus.Deriv.Pow
+import Mathlib.Algebra.BigOperators.Field -- Finset.sum_div
 
 set_option linter.mathlibStandardSet false
 
@@ -62,7 +65,7 @@ Rewrite h(v) as a quotient of sums with coefficients.
 -/
 noncomputable def coeff (n : ℕ) (r : ℝ) (k : ℕ) : ℝ := if k = n then r + 1 else r
 
-lemma h_eq_quotient (n : ℕ) (hn : n ≥ 2) (r v : ℝ) :
+lemma h_eq_quotient (n : ℕ) (hn : n ≥ 1) (r v : ℝ) :
   h n r v = (Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * k * v ^ k)) /
             (Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * v ^ k)) := by
   -- By definition of $h$, we can rewrite the numerator and denominator as sums with coefficients.
@@ -120,7 +123,7 @@ lemma h_strict_mono (n : ℕ) (hn : n ≥ 2) (r : ℝ) (hr : r > 0) :
     have h_deriv : ∀ v, v > 0 → deriv (h n r) v = h_deriv_numerator_aux n r v / (den_h n r v)^2 := by
       intro v hv_pos
       have h_deriv_def : deriv (h n r) v = (deriv (fun v => Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * k * v ^ k)) v * Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * v ^ k) - Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * k * v ^ k) * deriv (fun v => Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * v ^ k)) v) / (Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * v ^ k))^2 := by
-        rw [ show h n r = fun v => ( ∑ k ∈ Finset.Icc 1 n, coeff n r k * ( k : ℝ ) * v ^ k ) / ( ∑ k ∈ Finset.Icc 1 n, coeff n r k * v ^ k ) from funext fun v => h_eq_quotient n hn r v ];
+        rw [ show h n r = fun v => ( ∑ k ∈ Finset.Icc 1 n, coeff n r k * ( k : ℝ ) * v ^ k ) / ( ∑ k ∈ Finset.Icc 1 n, coeff n r k * v ^ k ) from funext fun v => h_eq_quotient n (by linarith) r v ];
         apply_rules [ deriv_div ];
         · norm_num;
         · norm_num;
@@ -170,7 +173,7 @@ lemma h_tendsto_zero (n : ℕ) (hn : n ≥ 2) (r : ℝ) (hr : r > 0) :
 /-
 h(v) tends to n as v approaches infinity.
 -/
-lemma h_tendsto_atTop (n : ℕ) (hn : n ≥ 2) (r : ℝ) (hr : r > 0) :
+lemma h_tendsto_atTop (n : ℕ) (hn : n ≥ 1) (r : ℝ) (hr : r > 0) :
   Filter.Tendsto (h n r) Filter.atTop (nhds n) := by
     unfold h;
     -- Divide numerator and denominator by $v^n$.
@@ -215,7 +218,11 @@ lemma h_tendsto_atTop (n : ℕ) (hn : n ≥ 2) (r : ℝ) (hr : r > 0) :
 /-
 There exists a unique positive real number v such that f(v) = 0.
 -/
-theorem unique_root_f (n : ℕ) (hn : n ≥ 2) (d r : ℝ) (hd : d ∈ Set.Ioo 1 (n : ℝ)) (hr : r > 0) :
+theorem unique_root_f (n : ℕ) (hn : n ≥ 2) (d r : ℝ)
+  --(hd : d ∈ Set.Ioo 1 (n : ℝ))
+  (hd₀ : 1 < d)
+  (hd₁ : d < n)
+  (hr : r > 0) :
   ∃! v, 0 < v ∧ f n d r v = 0 := by
     -- By the Intermediate Value Theorem, since $h(v)$ is strictly increasing and continuous on $(0, \infty)$ with $h(0^+) = 1$ and $h(\infty) = n$, there exists a unique $v₀$ such that $h(v₀) = d$.
     obtain ⟨v₀, hv₀⟩ : ∃! v : ℝ, 0 < v ∧ h n r v = d := by
@@ -227,12 +234,13 @@ theorem unique_root_f (n : ℕ) (hn : n ≥ 2) (d r : ℝ) (hd : d ∈ Set.Ioo 1
           · exact fun x hx => ne_of_gt <| add_pos_of_nonneg_of_pos
               ( mul_nonneg hr.le <| Finset.sum_nonneg fun _ _ => pow_nonneg hx.out.le _ ) <| pow_pos hx.out _;
         have h_ivt : ∃ v ∈ Set.Ioi 0, h n r v > d := by
-          have := h_tendsto_atTop n hn r hr;
-          have := this.eventually ( lt_mem_nhds hd.2 ) ;
+          have := h_tendsto_atTop n (by linarith) r hr;
+          have := this.eventually ( lt_mem_nhds hd₁ ) ;
           have := this.and ( Filter.eventually_gt_atTop 0 ) ;
           obtain ⟨ v, hv₁, hv₂ ⟩ := this.exists; exact ⟨ v, hv₂, hv₁ ⟩ ;
         have h_ivt : ∃ v ∈ Set.Ioi 0, h n r v < d := by
-          have := h_tendsto_zero n hn r hr; have := this.eventually ( gt_mem_nhds <| show 1 < d from hd.1 ) ;
+          have := h_tendsto_zero n hn r hr;
+          have := this.eventually ( gt_mem_nhds <| show 1 < d from hd₀ ) ;
           have := this.and self_mem_nhdsWithin; obtain ⟨ v, hv₁, hv₂ ⟩ := this.exists; use v; aesop;
         have h_ivt : IsConnected (Set.image (h n r) (Set.Ioi 0)) := by
           exact ⟨ Set.Nonempty.image _ ⟨ 1, by norm_num ⟩, isPreconnected_Ioi.image _ h_cont ⟩;
