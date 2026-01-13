@@ -18,26 +18,26 @@ Main results:
   the annuity equation we obtain unique solution for the
   Time Value of Money equation as well.
 
-lemma eq_CPT_I_from_D_maturity {n : ℕ} (hnn : n ≥ 2)
+lemma eq_CPT_I_of_D {n : ℕ} (hnn : n ≥ 2)
     {i d r : ℝ} (hd : d ∈ Set.Ioo (1:ℝ) n)
     (hr : r > 0) :
     ∃! i > -1, duration_equation n i r d
-lemma eq_CPT_I_from_D_par {n : ℕ} (hn : n ≥ 2 ) -- if n=1, then D=n and we can't infer i.
+lemma eq_CPT_I_of_D_par {n : ℕ} (hn : n ≥ 2 ) -- if n=1, then D=n and we can't infer i.
     {i : ℝ} (hi : i > -1) {d : ℝ} (hd : 0 < d - 1)
     (h :  duration_equation n i i d) :
     let hn₀ : n - 1 ≠ 0 := by contrapose! hn;omega
     yield hn₀ ⟨d - 1, hd⟩ = i := by
 
-lemma eq_CPT_N_from_D_I {n : ℕ} (hnn : n > 1)
+lemma eq_CPT_N_of_D {n : ℕ} (hnn : n > 1)
     {i d r : ℝ} (hd : d ∈ Set.Ioi (1:ℝ)) (hi : i > 0)
     (hr : r > i)
     (hann : duration_equation n i r d) :
     let hdi : d < 1 + 1 / i :=
     eq_D_of_duration_equation hnn hi (lt_trans hi hr) hann ▸  @inequality_proof n hnn i r hi (le_of_lt hr)
-    n = CPT_N_from_D hd hi hr hdi := by
-lemma eq_CPT_N_from_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
+    n = CPT_N_of_D hd hi hr hdi := by
+lemma eq_CPT_N_of_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
     (h :  duration_equation n i i d) :
-    n = CPT_N_from_D_par i d := by
+    n = CPT_N_of_D_par i d := by
 
 
 -/
@@ -142,15 +142,15 @@ lemma par_bond_price (n : ℕ) {i : ℝ} (hi : i > 0) :
 
 /-- The maturity of an at-par bond with rate `i`
 and Macaulay duration `d`. -/
-noncomputable def CPT_N_from_D_par (i d : ℝ) :=
+noncomputable def CPT_N_of_D_par (i d : ℝ) :=
     log (1 - d * (1 - (1+i)⁻¹)) / log (1+i)⁻¹
 
 /-- Determine the maturity from the duration
  for an at-par bond. -/
-lemma eq_CPT_N_from_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
+lemma eq_CPT_N_of_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
     (h :  duration_equation n i i d) :
-    n = CPT_N_from_D_par i d := by
-    unfold CPT_N_from_D_par
+    n = CPT_N_of_D_par i d := by
+    unfold CPT_N_of_D_par
     unfold duration_equation at h
     rw [par_bond_price n hi] at h
     unfold Ia annuity.id_mul_geom_sum at h
@@ -212,7 +212,7 @@ lemma eq_CPT_N_from_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
 
 
 /- An ambitious quest: show that n can be computed from D,i,r when r < i: -/
--- lemma CPT_N_from_D (n : ℕ) {i r : ℝ} (hi : i > 0) (hr : r ≥ 0) (d x : ℝ)
+-- lemma CPT_N_of_D (n : ℕ) {i r : ℝ} (hi : i > 0) (hr : r ≥ 0) (d x : ℝ)
 --     (h :  duration_equation n i r d) : n = x := by
 --   unfold duration_equation bond_price at h
 --   unfold Ia at h
@@ -356,7 +356,7 @@ and the coupon rate `r`. For larger `n` it is not generally uniquely solvable.
 `n=3` might be an interesting quadratic equation.
 Note that if i=r, (d-1)r = 2-d, i.e., i = (2-d)/(d-1).
 -/
-lemma eq_CPT_I_from_D_maturity2
+lemma eq_CPT_I_of_D_maturity2
     {i d r : ℝ} (hi : i > -1) (hd : d ∈ Set.Ioo 1 2) (hri : r > 0)
     (h : duration_equation 2 i r d) :
     i = (2 - d) * (r + 1) / ((d - 1) * r) - 1 := by
@@ -413,7 +413,7 @@ lemma deriv_bond_price_sum {n : ℕ} (r x : ℝ) :
 open Filter Finset
 
 /-- With great help from Aristotle. -/
-lemma eq_CPT_I_from_D_maturity {n : ℕ} (hnn : n ≥ 2)
+lemma eq_CPT_I_of_D {n : ℕ} (hnn : n ≥ 2)
     {i d r : ℝ} (hd : d ∈ Set.Ioo (1:ℝ) n)
     (hr : r > 0) :
     ∃! i > -1, duration_equation n i r d := by
@@ -488,7 +488,7 @@ lemma duration_bounded_by_maturity {n : ℕ} (hnn : n > 1) {i d r : ℝ} (hi : i
             rw [← eq_D_of_duration_equation hnn hi hr hann]
           linarith
 
-lemma eq_CPT_N_from_D_I.helper {n : ℕ} (hnn : n > 1)
+lemma eq_CPT_N_of_D.helper {n : ℕ} (hnn : n > 1)
     {i d r : ℝ} (hi : i > 0)
     (hr : r > i)
     (hann : duration_equation n i r d) :
@@ -503,11 +503,11 @@ lemma eq_CPT_N_from_D_I.helper {n : ℕ} (hnn : n > 1)
   exact inequality_proof n hnn i r hi $ le_of_lt hr
 
 
--- noncomputable def CPT_N_from_self {n : ℕ} (hnn : n > 1)
+-- noncomputable def CPT_N_of_self {n : ℕ} (hnn : n > 1)
 --     {i d r : ℝ} (hd : d ∈ Set.Ioi (1:ℝ)) (hi : i > 0)
 --     (hr : r > i) (hr' : r < 1)
 --     (hann : annuity.duration_equation n i r d) :=
---     CPT_N_from_D hd hi hr
+--     CPT_N_of_D hd hi hr
 --         (eq_D_of_duration_equation hnn hi (by linarith) hann ▸  @inequality_proof n hnn i r hi hr)
 
 
@@ -517,7 +517,7 @@ par bond of duration d.
 Then the PV of an (n-1)-period unit-payment annuity with rate i is d-1.
 This lets us compute `i` from `n` and `d`.
  -/
-lemma eq_CPT_I_from_D_par {n : ℕ} (hn : n ≥ 2 ) -- if n=1, then D=n and we can't infer i.
+lemma eq_CPT_I_of_D_par {n : ℕ} (hn : n ≥ 2 ) -- if n=1, then D=n and we can't infer i.
     {i : ℝ} (hi : i > -1) {d : ℝ} (hd : 0 < d - 1)
     (h :  duration_equation n i i d) :
     let hn₀ : n - 1 ≠ 0 := by contrapose! hn;omega
@@ -587,17 +587,17 @@ lemma eq_CPT_I_from_D_par {n : ℕ} (hn : n ≥ 2 ) -- if n=1, then D=n and we c
 
 
 /-- This version does not assume r<i or r>i. -/
-noncomputable def CPT_N_from_D {i d r : ℝ} (hd : 0 < d) (hi : i > 0)
+noncomputable def CPT_N_of_D {i d r : ℝ} (hd : 0 < d) (hi : i > 0)
   (hr : r > 0)
   (hdi : d < 1 + 1 / i) : ℝ := by
     exact (@AriMagic.unique_solution_n i d r hd hi hr hdi).choose
 
-lemma eq_CPT_N_from_D_I {n : ℕ} (hnn : n > 1)
+lemma eq_CPT_N_of_D {n : ℕ} (hnn : n > 1)
     {i d r : ℝ} (hd : 0 < d) (hi : i > 0)
     (hr : 0 < r) (hdi : d < 1 + 1 / i)
     (hann : duration_equation n i r d) :
-    n = @CPT_N_from_D i d r hd hi (by linarith) hdi := by
-    unfold CPT_N_from_D
+    n = @CPT_N_of_D i d r hd hi (by linarith) hdi := by
+    unfold CPT_N_of_D
     simp
     have := (@AriMagic.unique_solution_n i d r hd hi hr hdi).choose_spec
     simp at this
