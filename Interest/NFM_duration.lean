@@ -411,61 +411,43 @@ lemma eq_CPT_I_of_D {n : ℕ} (hnn : n ≥ 2)
 
 
 
-lemma annuity_bond_price_ne_zero {n : ℕ} (hnn : n > 1) {i r : ℝ} (hi : i > 0) (hr : r > 0) :
+lemma annuity_bond_price_ne_zero {n : ℕ} (hnn : n > 1) {i r : ℝ} (hi : i ≥ 0) (hr : r ≥ 0) :
     annuity.bond_price n i r ≠ 0 := by
     apply ne_of_gt
-    apply add_pos
-    apply mul_pos
-    linarith
-    apply sum_pos
-    intro j hj
-    positivity
-    simp
-    linarith
-    positivity
+    unfold bond_price bond_price_sum
+    calc _ < 0 + (1 + i)⁻¹ ^ n := by simp;positivity
+         _ ≤ _ := by
+          apply add_le_add;apply mul_nonneg hr;
+          have := @annuity_positive n (by linarith) i (by linarith)
+          unfold a at this
+          linarith
+          simp
+
 
 
 lemma eq_D_of_duration_equation {n : ℕ} (hnn : n > 1)
-    {i d r : ℝ} (hi : i > 0) (hr : r > 0)
+    {i d r : ℝ} (hi : i ≥ 0) (hr : r ≥ 0)
     (hann : duration_equation n i r d): d = D n i r := by
 have := @D_duration_equation n i r (by linarith) (by linarith)
 unfold duration_equation at hann this
 have : d * annuity.bond_price n i r
     = D n i r * annuity.bond_price n i r := by linarith
-apply mul_right_cancel₀ (by
-    apply annuity_bond_price_ne_zero hnn hi (by linarith: r > 0)
-    ) this
+apply mul_right_cancel₀ (annuity_bond_price_ne_zero hnn hi hr) this
 
 
 
-lemma duration_bounded_by_maturity {n : ℕ} (hnn : n > 1) {i d r : ℝ} (hi : i > 0) (hr : r > 0)
-   (hann : duration_equation n i r d) :
-  d ≤ ↑n := by
-          have h₀ := @D_duration_equation n i r (by linarith) (by linarith)
-          have h₁ := @D_upper_bound n i r (by linarith) (by linarith)
-          unfold duration_equation at h₀ hann
-          rw [← hann] at h₀
-          have h₂ : annuity.bond_price n i r ≠ 0 := by
-            apply annuity_bond_price_ne_zero ?_ hi ?_ <;> linarith
-          have :  D n i r * annuity.bond_price n i r =
-                                d * annuity.bond_price n i r := by linarith
-          have : D n i r = d := by
-            rw [← eq_D_of_duration_equation hnn hi hr hann]
-          linarith
+lemma duration_bounded_by_maturity {n : ℕ} (hnn : n > 1) {i d r : ℝ} (hi : i ≥ 0) (hr : r ≥ 0)
+    (hann : duration_equation n i r d) : d ≤ n :=
+  eq_D_of_duration_equation hnn hi hr hann ▸ D_upper_bound n (by linarith : i > -1) hr
 
+
+/-- Incorporate Aristotle's `inequality_proof` into our setting. -/
 lemma eq_CPT_N_of_D.helper {n : ℕ} (hnn : n > 1)
-    {i d r : ℝ} (hi : i > 0)
-    (hr : r > i)
+    {i d r : ℝ} (hi : i > 0) (hr : r ≥ i)
     (hann : duration_equation n i r d) :
      d < 1 + 1 / i := by
-  have := @D_duration_equation n i r (by linarith) (by linarith)
-  unfold duration_equation at hann this
-  have : d = D n i r := by
-    apply eq_D_of_duration_equation hnn hi (by linarith) hann
-  rw [this]
-
-  unfold D annuity.Ia annuity.id_mul_geom_sum annuity.bond_price annuity.bond_price_sum annuity.geom_sum
-  exact inequality_proof n hnn i r hi $ le_of_lt hr
+  rw [eq_D_of_duration_equation hnn (by linarith) (by linarith) hann]
+  exact inequality_proof n hnn i r hi hr
 
 
 -- noncomputable def CPT_N_of_self {n : ℕ} (hnn : n > 1)
@@ -481,44 +463,50 @@ lemma eq_CPT_N_of_D.helper {n : ℕ} (hnn : n > 1)
 /-- This version does not assume r<i or r>i. -/
 noncomputable def CPT_N_of_D {i d r : ℝ} (hd : 0 < d) (hi : i > 0)
   (hr : r > 0)
-  (hdi : d < 1 + 1 / i) : ℝ := by
-    exact (@AriMagic.unique_solution_n i d r hd hi hr hdi).choose
+  (hdi : d < 1 + 1 / i) : ℝ :=
+  (AriMagic.unique_solution_n hd hi hr hdi).choose
+
+/-- prove that the equation presented to Aristotle is indeed the duration equation. -/
+theorem equation_presented_to_aristotle {n : ℕ} {i d r : ℝ} (hi : i > 0)
+    (hann : duration_equation n i r d) :
+    d * (r * ((1 - (1 + i)⁻¹ ^ (n:ℝ)) / i) + (1 + i)⁻¹ ^ (n:ℝ)) -
+    (r * ((1 + i)⁻¹ * ((n:ℝ) * (1 + i)⁻¹ ^ ((n:ℝ) + 1) - (↑n + 1) * (1 + i)⁻¹ ^ (n:ℝ) + 1) / ((1 + i)⁻¹ - 1) ^ 2) +
+    (n:ℝ) * (1 + i)⁻¹ ^ (n:ℝ)) = 0 := by
+  unfold duration_equation bond_price
+    bond_price_sum geom_sum Ia annuity.id_mul_geom_sum at hann
+  rw [← hann]
+  have : (1+i)⁻¹ ≠ 0 := by simp;linarith
+  have : (1+i)⁻¹ ≠ 1 := by simp;linarith
+  set v := (1+i)⁻¹
+  rw [id_mul_geom_sum₁ _ this]
+  have : ∑ k ∈ Icc 1 n, v ^ k
+    = (1-v^(n)) / i := by
+    have := congrFun $ @annuity.a_eq_a_formula i (by linarith) (by linarith)
+    unfold a geom_sum a_formula at this
+    rw [this]
+  rw [this]
+  have h₀ : v ^ (n:ℝ) = v ^ n := by norm_num
+  rw [h₀]
+  have : v ^ ((n:ℝ) + 1) = v ^ (n+1) := by
+    have : v ^ (n + 1) = v^n * v := rfl
+    rw [this]
+    rw [← h₀]
+    refine rpow_add_one ?_ ↑n
+    tauto
+  rw [this]
+
 
 lemma eq_CPT_N_of_D {n : ℕ} (hnn : n > 1)
     {i d r : ℝ} (hd : 0 < d) (hi : i > 0)
     (hr : 0 < r) (hdi : d < 1 + 1 / i)
     (hann : duration_equation n i r d) :
     n = @CPT_N_of_D i d r hd hi (by linarith) hdi := by
-    unfold CPT_N_of_D
+    have := (AriMagic.unique_solution_n hd hi hr hdi).choose_spec.2
+    simp [CPT_N_of_D] at this ⊢
+    refine this n ?_ (equation_presented_to_aristotle hi hann)
     simp
-    have := (@AriMagic.unique_solution_n i d r hd hi hr hdi).choose_spec
-    simp at this
-    have := this.2 n (by simp;linarith)
-      (by
-      unfold duration_equation at hann
-      unfold bond_price
-        bond_price_sum geom_sum Ia annuity.id_mul_geom_sum at hann
-      rw [← hann]
-      have : (1+i)⁻¹ ≠ 0 := by simp;linarith
-      have : (1+i)⁻¹ ≠ 1 := by simp;linarith
-      set v := (1+i)⁻¹
-      rw [id_mul_geom_sum₁ _ this]
-      have : ∑ k ∈ Icc 1 n, v ^ k
-       = (1-v^(n)) / i := by
-        have := congrFun $ @annuity.a_eq_a_formula i (by linarith) (by linarith)
-        unfold a geom_sum a_formula at this
-        rw [this]
-      rw [this]
-      have h₀ : v ^ (n:ℝ) = v ^ n := by norm_num
-      rw [h₀]
-      have : v ^ ((n:ℝ) + 1) = v ^ (n+1) := by
-        have : v ^ (n + 1) = v^n * v := rfl
-        rw [this]
-        rw [← h₀]
-        refine rpow_add_one ?_ ↑n
-        tauto
-      rw [this])
-    exact this
+    linarith
+
 
 -- Try to CPT_I when N is also unknown
 -- lemma CPT_I_of_PV_DUR

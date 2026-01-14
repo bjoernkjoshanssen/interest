@@ -373,7 +373,7 @@ lemma at_most_one_root_of_single_critical_point
 /-
 There exists a unique positive real number n satisfying the equation.
 -/
-theorem unique_solution_n (i d r : ℝ) (hd : 0 < d) (hi : 0 < i) (hr : 0 < r)
+theorem unique_solution_n {i d r : ℝ} (hd : 0 < d) (hi : 0 < i) (hr : 0 < r)
   (hdi : d < 1 + 1 / i) :
   ∃! n : ℝ, 0 < n ∧
     let v := (1 + i)⁻¹
@@ -384,16 +384,16 @@ theorem unique_solution_n (i d r : ℝ) (hd : 0 < d) (hi : 0 < i) (hr : 0 < r)
         fun x a ↦ f_deriv i d r x (by linarith) (by linarith)
       have h_start_pos : 0 < f i d r 0 := by
         unfold f; norm_num [ v_def ] ; exact hd
-      have h_tendsto_neg : Filter.Tendsto (f i d r) Filter.atTop (nhds (C i d r)) := by
-        exact f_tendsto_atTop i d r hi
-      have h_lim_neg : C i d r < 0 := by
-        exact C_neg i d r (by linarith) hr (by field_simp at hdi;linarith)
+      have h_tendsto_neg : Filter.Tendsto (f i d r) Filter.atTop (nhds (C i d r)) :=
+        f_tendsto_atTop i d r hi
+      have h_lim_neg : C i d r < 0 :=
+        C_neg i d r (by linarith) hr (by field_simp at hdi;linarith)
       -- By definition of $f$, we know that $f$ has at most one positive critical point.
+      have h_at_most_one_critical : Set.Subsingleton {x | g i d r x = 0} :=
+        g_at_most_one_root i d r hi hr;
+      have h_at_most_one_critical : Set.Subsingleton {x | 0 < x ∧ g i d r x = 0} :=
+        fun x hx y hy => h_at_most_one_critical hx.2 hy.2;
       have h_at_most_one_critical : Set.Subsingleton {x | 0 < x ∧ v_def i ^ x * g i d r x = 0} := by
-        have h_at_most_one_critical : Set.Subsingleton {x | 0 < x ∧ g i d r x = 0} := by
-          have h_at_most_one_critical : Set.Subsingleton {x | g i d r x = 0} := by
-            exact g_at_most_one_root i d r hi hr;
-          exact fun x hx y hy => h_at_most_one_critical hx.2 hy.2;
         simp_all +decide
         exact fun x hx y hy => h_at_most_one_critical
           ⟨ hx.1, hx.2.resolve_left <| ne_of_gt <| Real.rpow_pos_of_pos ( inv_pos.mpr <| by linarith ) _ ⟩
