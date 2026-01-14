@@ -1,13 +1,23 @@
     Calculators such as the BA II Plus Professional are used by actuaries to make critical decisions. Consequently, formal verification of the underlying mathematics is important.
 
     The Annuity Equation is a staple of actuarial science and financial mathematics, relating a payment [PMT], present value [PV], future value [FV], interest rate [I/Y], and number of periods [N]. The BA II Plus Professional calculator allows a solution for any one of these five variables given the others, using keystrokes such as [CPT] [PMT].
-    Using the Lean proof assistant, we verify the unique solvability of the Annuity Equation for each variable under a non-par bond assumption.
+    Using the Lean proof assistant \cite{demoura21lean4}, we verify the unique solvability of the Annuity Equation for each variable under a non-par bond assumption.
 
+
+% \begin{figure}
+%     \centering
+% \includegraphics{TI-BA-II-Plus.jpg}
+%     \caption{An early TI BA II Plus with the TVM keys N, I/Y, PV, PMT, FV in the third row. (Wikipedia)}
+%     \label{fig:placeholder}
+% \end{figure}
 
 The Annuity Equation is often left implicit in textbooks on financial mathematics such as \cite{ChanTse2021_finmath}. Nevertheless it can be considered well known. It is as follows.
 \[
 \mathrm{[PV]} + \mathrm{[PMT]}\cdot \sum_{k=1}^{\mathrm{[N]}} (1 + (\mathrm{[I/Y]}/100))^{-k} + \mathrm{[FV]} \cdot (1 + \mathrm{[I/Y]}/100)^{-\mathrm{[N]}} = 0.
 \]
+
+In our formalization we assume that PV has the opposite sign of the common sign of PMT and FV, in order to avoid uniqueness issues stemming from Descartes' Rule of Signs, as in Norstr{\o}m's Criterion \cite{Norstrom1972IRR}.
+
 This form gives the impression that division $x \mapsto x^{-1}$ is necessary, but the equation can also be stated in a future value perspective that makes sense over a ring:
 \[
 \mathrm{[PV]}\cdot (1 + \mathrm{[I/Y]}/100)^{\mathrm{[N]}} + \mathrm{[PMT]}\cdot \sum_{k=0}^{\mathrm{[N]-1}} (1 + (\mathrm{[I/Y]}/100))^{k} + \mathrm{[FV]} = 0.
@@ -66,7 +76,7 @@ In other words, if $C_t$ and $D_t$ are infinite cash flows streams and $C_t=D_t$
 $C^{(t)}$ is the security where all payments before $t$ are removed, then $PV(C^{(t_0)})>PV(D^{(t_0)}$ as well.
 
 
-The Annuity Equation has apparently been implemented in financial calculators since their introduction half a century ago (June 13, 1976 for the original Texas Instruments Business Analyst).
+The Annuity Equation has apparently been implemented in financial calculators since their introduction half a century ago (June 13, 1976 for the original Texas Instruments Business Analyst \cite{TI-CL207A-1977}).
 Here we formalize the fact you can solve for any of these five variables given the other four. This is rather explicit for PV, FV, PMT, and N, but requires Newton's method for I/Y (interest per year). However, our proof is mathematical and does not concern itself with computability. It instead sticks to mathematical existence and uniqueness.
 
 
@@ -142,7 +152,7 @@ Given	(x : ℝ) (hx : x ≠ 1) (n : ℕ), we have
 	is defined by $a n i$ equals \verb!geom_sum! $n (1 + i)^{-1}$.
 \end{definition}
 
-Main result: if $r > i$ and $d < 1 + 1 / i$ then we can recover $n$ (maturity) from $D$ (duration) and $r$ and $i$.
+Main result: if $r > i$ and $d < 1 + 1 / i$ then we can recover $n$ (maturity) from $D$ (Macaulay duration \cite{Macaulay1938Problems}) and $r$ and $i$.
 But actually $d < 1 + 1 / i$ follows from $r > i$.
 If $r < i$ then we can only if $d < 1 + 1 / i$, which indeed does not hold in the graph in Chan and Tse.
 From \texttt{AriExtremum.lean}, when $r<i$ and $d>1+1/i$ (``deep discount'') there is a unique local extremum
@@ -151,11 +161,11 @@ and we cannot infer $n$ from $D$ except at the extremum.
 \begin{tabular}{ l l l}
 			  & $r<i$											& $r > i$	\\
 $d < 1 + 1/i$ &	can recover (\emph{unique\_solution})			& can recover (\emph{final\_result})\\
-$d > 1 + 1/i$ &	cannot recover (\emph({AriExtremum.lean}, Chan and Tse figure))		& impossible by \emph{Aristotle\_duration.lean}\\
+$d > 1 + 1/i$ &	cannot recover (\emph({AriExtremum.lean}, Chan and Tse figure))		& impossible\\
 \end{tabular}
 
 Combining these results the requirement is that $d < 1 + 1 / i$ overall.
-Aristotle provided a single proof of that.
+Aristotle \cite{achim2025aristotleimolevelautomatedtheorem} provided a single proof of that.
 
 \begin{lemma}\label{AriMagic.exists_pos_root_of_limits}
 	\lean{AriMagic.exists_pos_root_of_limits}
