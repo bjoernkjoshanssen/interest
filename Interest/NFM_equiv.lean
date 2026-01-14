@@ -283,3 +283,115 @@ noncomputable def annuity_equivalence (n : ℕ) (hn : n ≥ 2) : Equiv (Set.Ioi 
 
 --         sorry⟩) := by
 --     sorry
+
+
+/-- If the value of an annuity is `n-1` then the yield interest rate `i` must have been 0. -/
+theorem yield_zero {n : ℕ} (hn : n ≥ 2) (hd : 0 < (n:ℝ) - 1) :
+  let hn₀ : n - 1 ≠ 0 := by contrapose! hn;omega
+  yield hn₀ ⟨↑n - 1, hd⟩ = 0 := by
+    let hn₀ : n - 1 ≠ 0 := by contrapose! hn;omega
+    have hspec:= (@yield_exists (n-1) hn₀ (n-1) (by linarith)).choose_spec.2 0
+    simp at hspec
+    have := hspec (by
+        obtain ⟨m,hm⟩ : ∃ m, n = m+1 := Nat.exists_eq_succ_of_ne_zero (by linarith)
+        subst hm
+        simp)
+    simp_rw [this]
+    simp [yield]
+
+open annuity
+
+/-- A bond with coupon zero has duration equal to maturity. -/
+lemma duration_coupon_zero {n : ℕ}
+    {d : ℝ} {i : ℝ} (hr : -1 < i)
+    (h : duration_equation n i 0 d) :
+    d = n := by
+    have : (1+i)⁻¹ ^ n > 0 := by
+        apply pow_pos
+        simp
+        linarith
+    unfold duration_equation
+      annuity.bond_price
+      annuity.bond_price_sum
+      at h
+    generalize (1+i)⁻¹ ^ n = α at *
+    simp at h
+    have : d * α = n * α := by linarith
+    rw [mul_eq_mul_right_iff] at this
+    cases this with
+    | inl h => tauto
+    | inr h => subst h;simp at this
+
+/-- Perhaps surprisingly:
+Let i be the implied interest rate for an n-period
+par bond of duration d.
+Then the PV of an (n-1)-period unit-payment annuity with rate i is d-1.
+This lets us compute `i` from `n` and `d`.
+ -/
+lemma eq_CPT_I_of_D_par {n : ℕ} (hn : n ≥ 2 ) -- if n=1, then D=n and we can't infer i.
+    {i : ℝ} (hi : i > -1) {d : ℝ} (hd : 0 < d - 1)
+    (h :  duration_equation n i i d) :
+    let hn₀ : n - 1 ≠ 0 := by contrapose! hn;omega
+    yield hn₀ ⟨d - 1, hd⟩ = i := by
+    by_cases H : i = 0
+    · subst H
+      simp_rw [duration_coupon_zero hi h]
+      apply yield_zero hn
+    unfold duration_equation
+      annuity.bond_price
+      annuity.bond_price_sum
+      at h
+    have : annuity.geom_sum n (1 + i)⁻¹ = annuity.a n i := rfl
+    rw [this] at h
+    rw [congrFun $ annuity.a_eq_a_formula (H) (by linarith)] at h
+    unfold annuity.a_formula annuity.Ia annuity.id_mul_geom_sum at h
+    have := @id_mul_geom_sum₁ (1+i)⁻¹ (by
+        intro hc;simp at hc;exact H hc) n
+    rw [this] at h
+    have : i ≠ 0 := H
+    have : 1 + i ≠ 0 := by linarith
+    set v := (1+i)⁻¹
+    have hv₂ : (v - 1) ^ 2 ≠ 0 := by
+        simp [v]
+        intro hc
+        have : (1 + i)⁻¹ = 1 := by linarith
+        have : (1 + i) = 1 := by field_simp at this;tauto
+        apply H
+        linarith
+    rw [mul_comm i, div_mul] at h
+    field_simp at h ⊢
+    simp at h
+
+    have h₀ : - (i * v) * (↑n * v ^ (n + 1) - (↑n + 1) * v ^ n + 1)
+              + (d - ↑n * v ^ n) * (v - 1) ^ 2 = 0 := by
+        generalize (v-1)^2 = α at *
+        field_simp at h
+        linarith
+    have h₁ : i * v = 1 - v := by unfold v; field_simp; ring_nf
+    rw [h₁] at h₀
+    have h₂ : -1 * ((v - 1) * (- (d * v) + d + v^n - 1)) = 0 := by
+        ring_nf at h₀ this
+        linarith
+    have h₃ : v - 1 ≠ 0 := by contrapose! hv₂;rw [hv₂];simp
+    have : (v - 1) * (- (d * v) + d + v^n - 1) = 0 := by linarith
+    have : - (d * v) + d + v^n - 1 = 0 := (mul_eq_zero_iff_left h₃).mp this
+    have : v^n - d * v + d - 1 = 0 := by linarith
+    have : (v^n - d * v + d - 1) / (v - 1) = 0 := by rw [this]; simp
+    obtain ⟨t,ht⟩ : ∃ m, n = m + 2 := Nat.exists_eq_add_of_le' hn
+    obtain ⟨m,hm⟩ : ∃ m, n = m + 1 := by use t+1
+    subst hm
+    have hw : (v ^ (m + 1) - d * v + d - 1) = (v - 1) * (annuity.a m i - d + 1) := by
+        have : v ^ (m + 1) = v ^ m * v := rfl
+        rw [this, sub_mul, congrFun $ @annuity.a_eq_a_formula i H (by linarith)]
+        unfold annuity.a_formula v
+        field_simp
+        ring_nf
+    have h₃ : annuity.a m i - d + 1 = 0 := by
+        rw [hw, mul_comm] at this
+        rw [← this]
+        field_simp
+    have h₄ : d - 1 = annuity.a m i := by linarith
+    have := (@yield_exists (m) (by linarith) (d - 1) hd).choose_spec
+    simp at this
+    simp_rw [this.2 i hi h₄]
+    simp [yield]

@@ -304,6 +304,9 @@ noncomputable def Ia_formula : ℕ → ℝ → ℝ := fun n i =>
     let x := (1+i)⁻¹
     (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2
 
+def duration_equation (n : ℕ) (i r d : ℝ) :=
+   d * annuity.bond_price n i r - (r * annuity.Ia n i + ↑n * (1 + i)⁻¹ ^ n) = 0
+
 /-- Annuities. Another variant. -/
 noncomputable def a_variant : ℕ → ℝ → ℝ := fun n i =>
   (∑ k ∈ range (n + 1), (1 + i)⁻¹ ^ k) - 1
