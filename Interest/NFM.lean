@@ -182,6 +182,12 @@ lemma annuity_positive {n : ℕ} (hn : n ≠ 0) {i : ℝ} (hi : i > -1) :
   simp
   tauto
 
+lemma geom_sum_positive {n : ℕ} (hnn : n > 1) {i : ℝ} (hi : i ≥ 0) :
+    0 < geom_sum n (1 + i)⁻¹ := by
+  have := @annuity_positive n (by linarith) i (by linarith)
+  unfold a at this
+  linarith
+
 -- lemma annuity_antitone (n : ℕ) (hn : n ≠ 0) {i j : ℝ} (hi : i > -1)
 --     (hij : i < j) :
 --   a n j < a n i := by

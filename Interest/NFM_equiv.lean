@@ -306,21 +306,15 @@ lemma duration_coupon_zero {n : ℕ}
     {d : ℝ} {i : ℝ} (hr : -1 < i)
     (h : duration_equation n i 0 d) :
     d = n := by
-    have : (1+i)⁻¹ ^ n > 0 := by
-        apply pow_pos
-        simp
-        linarith
-    unfold duration_equation
-      annuity.bond_price
-      annuity.bond_price_sum
-      at h
-    generalize (1+i)⁻¹ ^ n = α at *
-    simp at h
-    have : d * α = n * α := by linarith
-    rw [mul_eq_mul_right_iff] at this
-    cases this with
-    | inl h => tauto
-    | inr h => subst h;simp at this
+  have : (1+i)⁻¹ ^ n > 0 := pow_pos (inv_pos.mpr (by linarith)) _
+  unfold duration_equation annuity.bond_price annuity.bond_price_sum at h
+  generalize (1+i)⁻¹ ^ n = α at *
+  simp at h
+  have : d * α = n * α := by linarith
+  rw [mul_eq_mul_right_iff] at this
+  cases this with
+  | inl h => tauto
+  | inr h => subst h;simp at this
 
 /-- Perhaps surprisingly:
 Let i be the implied interest rate for an n-period

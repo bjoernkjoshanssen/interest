@@ -377,8 +377,7 @@ lemma deriv_bond_price_sum {n : ℕ} (r x : ℝ) :
 open Filter Finset
 
 /-- With great help from Aristotle. -/
-lemma eq_CPT_I_of_D {n : ℕ} (hnn : n ≥ 2)
-    {i d r : ℝ} (hd : d ∈ Set.Ioo (1:ℝ) n)
+lemma eq_CPT_I_of_D {n : ℕ} (hnn : n ≥ 2) {i d r : ℝ} (hd : d ∈ Set.Ioo (1:ℝ) n)
     (hr : r > 0) :
     ∃! i > -1, duration_equation n i r d := by
   unfold duration_equation
@@ -408,27 +407,20 @@ lemma eq_CPT_I_of_D {n : ℕ} (hnn : n ≥ 2)
   linarith
 
 
-
-
 lemma annuity_bond_price_ne_zero {n : ℕ} (hnn : n > 1) {i r : ℝ} (hi : i ≥ 0) (hr : r ≥ 0) :
     annuity.bond_price n i r ≠ 0 := by
-    apply ne_of_gt
-    unfold bond_price bond_price_sum
-    calc _ < 0 + (1 + i)⁻¹ ^ n := by simp;positivity
-         _ ≤ _ := by
-          apply add_le_add;apply mul_nonneg hr;
-          have := @annuity_positive n (by linarith) i (by linarith)
-          unfold a at this
-          linarith
-          simp
+  apply ne_of_gt
+  calc _ < 0 + (1 + i)⁻¹ ^ n := by simp;positivity
+        _ ≤ _ := add_le_add
+          (mul_nonneg hr $ le_of_lt $ geom_sum_positive hnn hi) $ le_refl _
 
 lemma eq_D_of_duration_equation {n : ℕ} (hnn : n > 1)
     {i d r : ℝ} (hi : i ≥ 0) (hr : r ≥ 0)
     (hann : duration_equation n i r d): d = D n i r := by
-apply mul_right_cancel₀ (annuity_bond_price_ne_zero hnn hi hr)
-have hdur := D_duration_equation n (by linarith : i > -1) hr
-unfold duration_equation at hann hdur
-linarith
+  apply mul_right_cancel₀ (annuity_bond_price_ne_zero hnn hi hr)
+  have hdur := D_duration_equation n (by linarith : i > -1) hr
+  unfold duration_equation at hann hdur
+  linarith
 
 
 
