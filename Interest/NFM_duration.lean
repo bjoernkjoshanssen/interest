@@ -1,5 +1,4 @@
 import Interest.Aristotle_CPT_I
-import Interest.Aristotle_duration -- to eliminate d < 1 + 1/i assumption in Aristotle_CPT_N
 import Interest.AristotleMagic
 import Interest.NFM
 import Interest.NFM_equiv
@@ -423,16 +422,13 @@ lemma annuity_bond_price_ne_zero {n : ℕ} (hnn : n > 1) {i r : ℝ} (hi : i ≥
           linarith
           simp
 
-
-
 lemma eq_D_of_duration_equation {n : ℕ} (hnn : n > 1)
     {i d r : ℝ} (hi : i ≥ 0) (hr : r ≥ 0)
     (hann : duration_equation n i r d): d = D n i r := by
-have := @D_duration_equation n i r (by linarith) (by linarith)
-unfold duration_equation at hann this
-have : d * annuity.bond_price n i r
-    = D n i r * annuity.bond_price n i r := by linarith
-apply mul_right_cancel₀ (annuity_bond_price_ne_zero hnn hi hr) this
+apply mul_right_cancel₀ (annuity_bond_price_ne_zero hnn hi hr)
+have hdur := D_duration_equation n (by linarith : i > -1) hr
+unfold duration_equation at hann hdur
+linarith
 
 
 
@@ -441,13 +437,34 @@ lemma duration_bounded_by_maturity {n : ℕ} (hnn : n > 1) {i d r : ℝ} (hi : i
   eq_D_of_duration_equation hnn hi hr hann ▸ D_upper_bound n (by linarith : i > -1) hr
 
 
+/-- Aristotle's proof. -/
+theorem eq_CPT_N_of_D.helper₀ {n : ℕ} (hnn : n > 1) {i r : ℝ} (hi : i > 0) (hri : r ≥ i) :
+  (r * (∑ k ∈ Finset.Icc 1 n, (k : ℝ) * (1 + i)⁻¹ ^ k) + (n : ℝ) * (1 + i)⁻¹ ^ n) /
+  (r * (∑ k ∈ Finset.Icc 1 n, (1 + i)⁻¹ ^ k) + (1 + i)⁻¹ ^ n) < 1 + 1 / i := by
+    rw [ add_div', div_lt_div_iff₀ ] <;> try positivity;
+    · -- We'll use the fact that $\sum_{k=1}^n kx^k = x \frac{1 - (n+1)x^n + nx^{n+1}}{(1-x)^2}$.
+      have h_sum_formula : ∑ k ∈ Finset.Icc 1 n, (k : ℝ) * (1 + i)⁻¹ ^ k = (1 + i)⁻¹ * (1 - (n + 1) * (1 + i)⁻¹ ^ n + n * (1 + i)⁻¹ ^ (n + 1)) / (1 - (1 + i)⁻¹) ^ 2 := by
+        exact eq_div_of_mul_eq ( pow_ne_zero 2 <| by nlinarith [ inv_mul_cancel₀ ( by linarith : ( 1 + i ) ≠ 0 ) ] ) <| Nat.recOn n ( by norm_num ) fun n ihn => by norm_num [ pow_succ, Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] at * ; nlinarith [ inv_mul_cancel₀ ( by linarith : ( 1 + i ) ≠ 0 ) ] ;
+      -- We'll use the fact that $\sum_{k=1}^n x^k = \frac{x - x^{n+1}}{1 - x}$.
+      have h_sum_formula2 : ∑ k ∈ Finset.Icc 1 n, (1 + i)⁻¹ ^ k = (1 + i)⁻¹ * (1 - (1 + i)⁻¹ ^ n) / (1 - (1 + i)⁻¹) := by
+        erw [ geom_sum_Ico ] <;> norm_num [ hi.ne' ];
+        -- Combine and simplify the fractions
+        field_simp
+        ring;
+      field_simp [h_sum_formula, h_sum_formula2] at *;
+      rw [ h_sum_formula, h_sum_formula2 ] ; ring_nf ; norm_num;
+      field_simp at *; ring_nf at *; (
+      nlinarith [ show 0 < i ^ 3 by positivity, show 0 < i ^ 2 * n by positivity, show 0 < i * n by positivity, show 0 < i ^ 3 * n by positivity, show 0 < i ^ 2 * n ^ 2 by positivity, show 0 < i * n ^ 2 by positivity, show 0 < i ^ 3 * n ^ 2 by positivity, show ( 1 + i ) ^ n > 1 by exact one_lt_pow₀ ( by linarith ) ( by linarith ) ]);
+    · exact add_pos_of_nonneg_of_pos ( mul_nonneg ( by linarith ) ( Finset.sum_nonneg fun _ _ => pow_nonneg ( inv_nonneg.2 ( by linarith ) ) _ ) ) ( pow_pos ( inv_pos.2 ( by linarith ) ) _ )
+
+
 /-- Incorporate Aristotle's `inequality_proof` into our setting. -/
 lemma eq_CPT_N_of_D.helper {n : ℕ} (hnn : n > 1)
-    {i d r : ℝ} (hi : i > 0) (hr : r ≥ i)
+    {i d r : ℝ} (hi : i > 0) (hri : r ≥ i)
     (hann : duration_equation n i r d) :
-     d < 1 + 1 / i := by
-  rw [eq_D_of_duration_equation hnn (by linarith) (by linarith) hann]
-  exact inequality_proof n hnn i r hi hr
+     d < 1 + 1 / i :=
+  eq_D_of_duration_equation hnn (le_of_lt hi) (by linarith : r ≥ 0) hann
+     ▸ eq_CPT_N_of_D.helper₀ hnn hi hri
 
 
 -- noncomputable def CPT_N_of_self {n : ℕ} (hnn : n > 1)
