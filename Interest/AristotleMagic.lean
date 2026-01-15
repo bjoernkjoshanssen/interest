@@ -359,13 +359,12 @@ lemma at_most_one_root_of_single_critical_point
     linarith;
   -- Apply root_implies_limit_ge_zero with c=c, r=b.
   have h_limit_ge_zero : L ≥ 0 := by
-    apply root_implies_limit_ge_zero;
-    exact hc.1.2;
-    exact hcont.mono ( Set.Ici_subset_Ici.mpr ( by linarith [ hc.1.1 ] ) );
+    apply root_implies_limit_ge_zero hc.1.2;
+    · exact hcont.mono ( Set.Ici_subset_Ici.mpr ( by linarith [ hc.1.1 ] ) );
     · exact fun x hx => ( hderiv x <| lt_trans ( lt_trans hab.1 hc.1.1 ) hx ) |> HasDerivAt.differentiableAt |> DifferentiableAt.differentiableWithinAt;
     · exact fun x hx => by rw [ hderiv x ( show 0 < x from lt_trans ( lt_trans hab.1 hc.1.1 ) hx ) |> HasDerivAt.deriv ] ; exact h_deriv_ne_zero x ( show 0 < x from lt_trans ( lt_trans hab.1 hc.1.1 ) hx ) ( ne_of_gt hx ) ;
-    · linarith;
-    · linarith;
+    · exact h_sign_c
+    · exact hab.2.2.2
     · exact hlim;
   linarith
 
@@ -405,7 +404,9 @@ theorem unique_solution_n {i d r : ℝ} (hd : 0 < d) (hi : 0 < i) (hr : 0 < r)
       -- $f$ has at least one positive root.
       have h_at_least_one_root : ∃ x > 0, f i d r x = 0 := by
         apply exists_pos_root_of_limits h_cont h_start_pos h_tendsto_neg h_lim_neg;
-      exact ⟨ h_at_least_one_root.choose, h_at_least_one_root.choose_spec,
-        fun x hx => h_at_most_one_root hx h_at_least_one_root.choose_spec ⟩
+      exact ⟨ h_at_least_one_root.choose,
+              h_at_least_one_root.choose_spec,
+        fun x hx => h_at_most_one_root hx
+                    h_at_least_one_root.choose_spec ⟩
 
 end AriMagic

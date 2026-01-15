@@ -1,7 +1,14 @@
+\section{Introduction}
+	In this article we report on a project to formalize interest theory in the proof assistant Lean \cite{demoura21lean4}.
+	The mathematical theory of interest, often known as simply financial mathematics within actuarial science,
+	is important in the real world and is due for a formal treatment.
+	
+	We focus on the pricing of bonds and annuities in settings in which financial calculators are used by actuaries.
+
     Calculators such as the BA II Plus Professional are used by actuaries to make critical decisions. Consequently, formal verification of the underlying mathematics is important.
 
     The Annuity Equation is a staple of actuarial science and financial mathematics, relating a payment [PMT], present value [PV], future value [FV], interest rate [I/Y], and number of periods [N]. The BA II Plus Professional calculator allows a solution for any one of these five variables given the others, using keystrokes such as [CPT] [PMT].
-    Using the Lean proof assistant \cite{demoura21lean4}, we verify the unique solvability of the Annuity Equation for each variable under a non-par bond assumption.
+    In the first half of the project we verify the unique solvability of the Annuity Equation for each variable under a non-par bond assumption. In the second half, we replace the annuity equation by an equation defining the Macaulay duration in terms of maturity, yield rate, and coupon rate for a bond, and obtain similar results. In this half we make use of Harmonic's tool Aristotle.
 
 
 % \begin{figure}
@@ -11,6 +18,7 @@
 %     \label{fig:placeholder}
 % \end{figure}
 
+\section{The annuity equation}
 The Annuity Equation is often left implicit in textbooks on financial mathematics such as \cite{ChanTse2021_finmath}. Nevertheless it can be considered well known. It is as follows.
 \[
 \mathrm{[PV]} + \mathrm{[PMT]}\cdot \sum_{k=1}^{\mathrm{[N]}} (1 + (\mathrm{[I/Y]}/100))^{-k} + \mathrm{[FV]} \cdot (1 + \mathrm{[I/Y]}/100)^{-\mathrm{[N]}} = 0.
@@ -152,16 +160,22 @@ Given	(x : ℝ) (hx : x ≠ 1) (n : ℕ), we have
 	is defined by $a n i$ equals \verb!geom_sum! $n (1 + i)^{-1}$.
 \end{definition}
 
-Main result: if $r > i$ and $d < 1 + 1 / i$ then we can recover $n$ (maturity) from $D$ (Macaulay duration \cite{Macaulay1938Problems}) and $r$ and $i$.
-But actually $d < 1 + 1 / i$ follows from $r > i$.
-If $r < i$ then we can only if $d < 1 + 1 / i$, which indeed does not hold in the graph in Chan and Tse.
-From \texttt{AriExtremum.lean}, when $r<i$ and $d>1+1/i$ (``deep discount'') there is a unique local extremum
+\section{Macaulay duration}
+
+One of our main results is that if $D < 1 + 1 / i$ then we can recover $n$ (maturity) from $D$ (Macaulay duration \cite{Macaulay1938Problems}) and $r$ and $i$.
+
+Actually $d < 1 + 1 / i$ follows from $r > i$.
+If $r < i$ then we can only if $d < 1 + 1 / i$, which indeed does not hold in the graph in Chan and Tse
+\cite[Figure 8.3 on page 251]{ChanTse2021_finmath}.
+
+% From \texttt{AriExtremum.lean} and Chan and Tse figure,
+When $r<i$ and $d>1+1/i$ (``deep discount'') there is a unique local extremum
 and we cannot infer $n$ from $D$ except at the extremum.
 
 \begin{tabular}{ l l l}
 			  & $r<i$											& $r > i$	\\
 $d < 1 + 1/i$ &	can recover (\emph{unique\_solution})			& can recover (\emph{final\_result})\\
-$d > 1 + 1/i$ &	cannot recover (\emph({AriExtremum.lean}, Chan and Tse figure))		& impossible\\
+$d > 1 + 1/i$ &	cannot recover		& impossible\\
 \end{tabular}
 
 Combining these results the requirement is that $d < 1 + 1 / i$ overall.

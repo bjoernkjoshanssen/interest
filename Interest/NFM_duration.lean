@@ -75,11 +75,6 @@ lemma D_one {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) : D 1 i r = 1 := by
   linarith
   linarith
 
-
-
-
-
-
 /-- The Macaulay duration does indeed satisfy the duration equation. -/
 lemma D_duration_equation (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) :
   duration_equation n i r (D n i r) := by
@@ -114,18 +109,21 @@ lemma D_upper_bound (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) : D n i r
   exact hr
 
 
+/-- The duration of a bond is nonnegative. -/
+lemma duration_nonneg (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) :
+    0 ≤ D n i r := by
+  have h : 1 + i ≥ 0 := by linarith
+  apply div_nonneg
+  apply add_nonneg $ mul_nonneg hr $ increasing_annuity_nonneg _ hi
+  apply mul_nonneg $ Nat.cast_nonneg _
+  apply pow_nonneg $ inv_nonneg.mpr h
+  apply add_nonneg
+  exact mul_nonneg hr $ annuity_nonneg _ hi
+  apply pow_nonneg $ inv_nonneg.mpr h
 
-  lemma D_lower_bound (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) : 0 ≤ D n i r := by
-    have h : 1 + i ≥ 0 := by linarith
-    apply div_nonneg
-    apply add_nonneg $ mul_nonneg hr $ increasing_annuity_nonneg _ hi
-    apply mul_nonneg $ Nat.cast_nonneg _
-    apply pow_nonneg $ inv_nonneg.mpr h
-    apply add_nonneg
-    exact mul_nonneg hr $ annuity_nonneg _ hi
-    apply pow_nonneg $ inv_nonneg.mpr h
 
-
+/-- An at-par bond with unit (1) redemption value has price 1
+as well, no matter what the maturity and interest rates are. -/
 lemma par_bond_price (n : ℕ) {i : ℝ} (hi : i > 0) :
     bond_price n i i = 1 := by
   unfold bond_price bond_price_sum
@@ -137,13 +135,11 @@ lemma par_bond_price (n : ℕ) {i : ℝ} (hi : i > 0) :
   linarith
 
 
-/-- The maturity of an at-par bond with rate `i`
-and Macaulay duration `d`. -/
+/-- The maturity of an at-par bond with rate `i` and Macaulay duration `d`. -/
 noncomputable def CPT_N_of_D_par (i d : ℝ) :=
     log (1 - d * (1 - (1+i)⁻¹)) / log (1+i)⁻¹
 
-/-- Determine the maturity from the duration
- for an at-par bond. -/
+/-- Determine the maturity from the duration for an at-par bond. -/
 lemma eq_CPT_N_of_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
     (h :  duration_equation n i i d) :
     n = CPT_N_of_D_par i d := by
@@ -206,43 +202,6 @@ lemma eq_CPT_N_of_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
     rw [← this]
     field_simp
 
-
-
-/- An ambitious quest: show that n can be computed from D,i,r when r < i: -/
--- lemma CPT_N_of_D (n : ℕ) {i r : ℝ} (hi : i > 0) (hr : r ≥ 0) (d x : ℝ)
---     (h :  duration_equation n i r d) : n = x := by
---   unfold duration_equation bond_price at h
---   unfold Ia at h
---   have := @id_mul_geom_sum₁ (1+i)⁻¹ (by intro hc;simp at hc;subst hc;simp at hi) n
---   rw [this] at h
---   have := congrFun $ @a_eq_a_formula i (by linarith) (by linarith)
---   rw [this] at h
---   repeat clear this
---   unfold a_formula at h
---   have : (1+i)⁻¹ ≠ 1 := by intro hc;simp at hc;linarith
---   have : ((1+i)⁻¹ - 1)^2 ≠ 0 := by intro hc;simp at hc;apply this;linarith
---   generalize (1+i)⁻¹ = v at *
---   field_simp at h
---   ring_nf at h
---   generalize v^n = y at h
---   have :  y * (d*(i-r)*(1-v)^2
---     + r * v * i * (1 + (1-v) * ↑n)
---         -i*n*(1-v)^2) =
---   - (d*r*(1-v)^2 - r * v * i) := by linarith
---   -- y -> 0
---   -- we see that if i=r we cannot solve for d.
---   sorry
-
-
-lemma sub_nat_real {n : ℕ} (hn : n ≥ 2) {i : ℝ} {d : ℝ}
-  (hd₁ : d ≤ ↑n) (h : duration_equation n i i d) : d - 1 ≤ ↑(n - 1) := by
-        simp
-        convert hd₁
-        obtain ⟨m,hm⟩ : ∃ m, n = m + 2 := Nat.exists_eq_add_of_le' hn
-        subst hm
-        simp
-        linarith
-
 /-- Present value of an increasing annuity with interest rate 0. -/
 lemma increasing_annuity_zero {n : ℕ} :
     annuity.Ia n 0 = (n+1) * n / 2 := by
@@ -297,25 +256,25 @@ lemma increasing_annuity_zero {n : ℕ} :
 lemma duration_yield_zero {n : ℕ}
     (hn : n ≠ 0 )
     {d : ℝ} {r : ℝ} (hr : 0 ≤ r)
-    (h :  duration_equation n 0 r d) :
+    (h : duration_equation n 0 r d) :
     d = (r*(n+1)*n/2 + n) / (r*n + 1) := by
-    unfold duration_equation
-      annuity.bond_price
-      annuity.bond_price_sum
-      annuity.geom_sum
-      at h
-    simp at h
-    rw [increasing_annuity_zero] at h
-    have : r * n + 1 ≠ 0 := by
-        apply ne_of_gt
-        positivity
-    field_simp
-    linarith
+  unfold duration_equation
+    annuity.bond_price
+    annuity.bond_price_sum
+    annuity.geom_sum
+    at h
+  simp at h
+  rw [increasing_annuity_zero] at h
+  have : r * n + 1 ≠ 0 := by
+      apply ne_of_gt
+      positivity
+  field_simp
+  linarith
 
 
 
 
-/-- For a bond with maturity `n=2`, find the yield rate `i` from the Macaulay duration `d`
+/-- For a bond with maturity `n=2`, explicitly find the yield rate `i` from the Macaulay duration `d`
 and the coupon rate `r`. For larger `n` it is not generally uniquely solvable.
 `n=3` might be an interesting quadratic equation.
 Note that if i=r, (d-1)r = 2-d, i.e., i = (2-d)/(d-1).
@@ -376,7 +335,8 @@ lemma deriv_bond_price_sum {n : ℕ} (r x : ℝ) :
 
 open Filter Finset
 
-/-- With great help from Aristotle. -/
+/-- Inferring the interest rate from the maturity,
+duration, and coupon rate. With great help from Aristotle. -/
 lemma eq_CPT_I_of_D {n : ℕ} (hnn : n ≥ 2) {i d r : ℝ} (hd : d ∈ Set.Ioo (1:ℝ) n)
     (hr : r > 0) :
     ∃! i > -1, duration_equation n i r d := by
@@ -458,25 +418,16 @@ lemma eq_CPT_N_of_D.helper {n : ℕ} (hnn : n > 1)
   eq_D_of_duration_equation hnn (le_of_lt hi) (by linarith : r ≥ 0) hann
      ▸ eq_CPT_N_of_D.helper₀ hnn hi hri
 
-
--- noncomputable def CPT_N_of_self {n : ℕ} (hnn : n > 1)
---     {i d r : ℝ} (hd : d ∈ Set.Ioi (1:ℝ)) (hi : i > 0)
---     (hr : r > i) (hr' : r < 1)
---     (hann : annuity.duration_equation n i r d) :=
---     CPT_N_of_D hd hi hr
---         (eq_D_of_duration_equation hnn hi (by linarith) hann ▸  @inequality_proof n hnn i r hi hr)
-
-
-
-
 /-- This version does not assume r<i or r>i. -/
 noncomputable def CPT_N_of_D {i d r : ℝ} (hd : 0 < d) (hi : i > 0)
   (hr : r > 0)
   (hdi : d < 1 + 1 / i) : ℝ :=
   (AriMagic.unique_solution_n hd hi hr hdi).choose
 
-/-- prove that the equation presented to Aristotle is indeed the duration equation. -/
-theorem equation_presented_to_aristotle {n : ℕ} {i d r : ℝ} (hi : i > 0)
+/--
+A temporary lemma to prove that the equation presented to Aristotle
+is indeed the duration equation. -/
+lemma equation_presented_to_aristotle {n : ℕ} {i d r : ℝ} (hi : i > 0)
     (hann : duration_equation n i r d) :
     d * (r * ((1 - (1 + i)⁻¹ ^ (n:ℝ)) / i) + (1 + i)⁻¹ ^ (n:ℝ)) -
     (r * ((1 + i)⁻¹ * ((n:ℝ) * (1 + i)⁻¹ ^ ((n:ℝ) + 1) - (↑n + 1) * (1 + i)⁻¹ ^ (n:ℝ) + 1) / ((1 + i)⁻¹ - 1) ^ 2) +
@@ -505,16 +456,14 @@ theorem equation_presented_to_aristotle {n : ℕ} {i d r : ℝ} (hi : i > 0)
   rw [this]
 
 
-lemma eq_CPT_N_of_D {n : ℕ} (hnn : n > 1)
-    {i d r : ℝ} (hd : 0 < d) (hi : i > 0)
+lemma eq_CPT_N_of_D {n : ℕ} (hnn : (n : ℝ) > 0)
+    {i d r : ℝ} (hd : 0 < d) (hi : 0 < i)
     (hr : 0 < r) (hdi : d < 1 + 1 / i)
     (hann : duration_equation n i r d) :
-    n = @CPT_N_of_D i d r hd hi (by linarith) hdi := by
+    n = @CPT_N_of_D i d r hd hi hr hdi := by
     have := (AriMagic.unique_solution_n hd hi hr hdi).choose_spec.2
-    simp [CPT_N_of_D] at this ⊢
-    refine this n ?_ (equation_presented_to_aristotle hi hann)
-    simp
-    linarith
+    simp only [and_imp, CPT_N_of_D] at this ⊢
+    exact this n hnn (equation_presented_to_aristotle hi hann)
 
 
 -- Try to CPT_I when N is also unknown
