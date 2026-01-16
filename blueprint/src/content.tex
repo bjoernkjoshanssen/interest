@@ -29,16 +29,18 @@ In order to deduce the maturity date and the yield rate from the Macaulay durati
 
     Calculators such as the BA II Plus Professional are used by actuaries to make critical decisions. Consequently, formal verification of the underlying mathematics is important.
 
-    The Annuity Equation is a staple of actuarial science and financial mathematics, relating a payment [PMT], present value [PV], future value [FV], interest rate [I/Y], and number of periods [N]. The BA II Plus Professional calculator (Figure \ref{fig:calc}) allows a solution for any one of these five variables given the others, using keystrokes such as [CPT] [PMT].
+    The Annuity Equation is a staple of actuarial science and financial mathematics, relating a payment [PMT], present value [PV], future value [FV], interest rate [I/Y], and number of periods [N]. The BA II Plus Professional calculator
+	% (Figure \ref{fig:calc})
+	allows a solution for any one of these five variables given the others, using keystrokes such as [CPT] [PMT].
     In the first half of the project we verify the unique solvability of the Annuity Equation for each variable under a non-par bond assumption. In the second half, we replace the annuity equation by an equation defining the Macaulay duration in terms of maturity, yield rate, and coupon rate for a bond, and obtain similar results. In this half we make use of Harmonic's tool Aristotle.
 
 
-\begin{figure}
-    \centering
-\includegraphics[width=8cm]{TI-BA-II-Plus.jpg}
-    \caption{An early TI BA II Plus calculator with the TVM (time value of money) keys N, I/Y, PV, PMT, FV in the third row. (Wikipedia)}
-    \label{fig:calc}
-\end{figure}
+% \begin{figure}
+%     \centering
+% \includegraphics[width=8cm]{TI-BA-II-Plus.jpg}
+%     \caption{An early TI BA II Plus calculator with the TVM (time value of money) keys N, I/Y, PV, PMT, FV in the third row. (Wikipedia)}
+%     \label{fig:calc}
+% \end{figure}
 
 \section{The annuity equation}
 The Annuity Equation is often left implicit in textbooks on financial mathematics such as \cite{ChanTse2021_finmath}. Nevertheless it can be considered well known. It is as follows.
