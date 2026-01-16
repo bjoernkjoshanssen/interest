@@ -1,5 +1,18 @@
 \section{Introduction}
-	In this article we report on a project to formalize interest theory in the proof assistant Lean \cite{demoura21lean4}.
+	In this article we report on a project to formalize interest theory in the proof assistant Lean \cite{demoura21lean4}
+	in a library, Interest.
+
+Presently it includes results on the existence of a unique solution for any of these given the others:
+\begin{itemize}
+	\item present value of an annuity;
+	\item future value;
+	\item periodic payment (equivalently, coupon rate for a bond);
+	\item prevailing interest rate (yield);
+	\item Macaulay duration;
+	\item maturity date of a bond.
+\end{itemize}
+In order to deduce the maturity date and the yield rate from the Macaulay duration we made use of Aristotle \cite{achim2025aristotleimolevelautomatedtheorem} by Harmonic, which saved a lot of time.
+
 	The mathematical theory of interest, often known as simply financial mathematics within actuarial science,
 	is important in the real world and is due for a formal treatment.
 	
