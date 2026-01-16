@@ -1,3 +1,12 @@
+\begin{abstract}
+Calculators such as the BA II Plus Professional are used by actuaries to make critical decisions. Consequently, formal verification of the underlying mathematics is important.
+
+The Annuity Equation is a staple of actuarial science and financial mathematics, relating a payment [PMT], present value [PV], future value [FV], interest rate [I/Y], and number of periods [N]. The BA II Plus Professional calculator allows a solution for any one of these five variables given the others, using keystrokes such as [CPT] [PMT].
+Using the Lean proof assistant, we verify the unique solvability of the Annuity Equation for each variable under reasonable assumptions.
+
+We also do the same for a Macaulay duration equation, with some help with Harmonic's ``mathematical superintelligence'' tool Aristotle.
+\end{abstract}
+
 \section{Introduction}
 	In this article we report on a project to formalize interest theory in the proof assistant Lean \cite{demoura21lean4}
 	in a library, Interest.
@@ -20,16 +29,16 @@ In order to deduce the maturity date and the yield rate from the Macaulay durati
 
     Calculators such as the BA II Plus Professional are used by actuaries to make critical decisions. Consequently, formal verification of the underlying mathematics is important.
 
-    The Annuity Equation is a staple of actuarial science and financial mathematics, relating a payment [PMT], present value [PV], future value [FV], interest rate [I/Y], and number of periods [N]. The BA II Plus Professional calculator allows a solution for any one of these five variables given the others, using keystrokes such as [CPT] [PMT].
+    The Annuity Equation is a staple of actuarial science and financial mathematics, relating a payment [PMT], present value [PV], future value [FV], interest rate [I/Y], and number of periods [N]. The BA II Plus Professional calculator (Figure \ref{fig:calc}) allows a solution for any one of these five variables given the others, using keystrokes such as [CPT] [PMT].
     In the first half of the project we verify the unique solvability of the Annuity Equation for each variable under a non-par bond assumption. In the second half, we replace the annuity equation by an equation defining the Macaulay duration in terms of maturity, yield rate, and coupon rate for a bond, and obtain similar results. In this half we make use of Harmonic's tool Aristotle.
 
 
-% \begin{figure}
-%     \centering
-% \includegraphics{TI-BA-II-Plus.jpg}
-%     \caption{An early TI BA II Plus with the TVM keys N, I/Y, PV, PMT, FV in the third row. (Wikipedia)}
-%     \label{fig:placeholder}
-% \end{figure}
+\begin{figure}
+    \centering
+\includegraphics[width=10cm]{TI-BA-II-Plus.jpg}
+    \caption{An early TI BA II Plus with the TVM keys N, I/Y, PV, PMT, FV in the third row. (Wikipedia)}
+    \label{fig:calc}
+\end{figure}
 
 \section{The annuity equation}
 The Annuity Equation is often left implicit in textbooks on financial mathematics such as \cite{ChanTse2021_finmath}. Nevertheless it can be considered well known. It is as follows.
@@ -109,6 +118,8 @@ Here we formalize the fact you can solve for any of these five variables given t
 % If you want to split the blueprint content into several files then
 % the current file can be a simple sequence of \input. Otherwise It
 % can start with a \section or \chapter for instance.
+
+\subsection{Some sample lemmas from the beginning of the project}
 \begin{lemma}\label{sub_ne_zero_of_ne}
 	\lean{sub_ne_zero_of_ne}
 	\href{https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Group/Basic.html#sub_ne_zero_of_ne}
@@ -136,33 +147,39 @@ Here we formalize the fact you can solve for any of these five variables given t
 \begin{lemma}\label{id_mul_geom_sum}
 \lean{id_mul_geom_sum}
 \leanok
- Given (x : ℝ) (hx : x ≠ 1) (n : ℕ), we have
-  $∑ k ∈ Finset.range (n+1), k * x^k =
-  (x * (n * x^(n + 1) - ((n + 1) * x^n) + 1))/(x - 1)^2$.
+Given $x\in\mathbb R$ with $x\ne 1$ and $n\in\mathbb N$, we have
+\[
+	\sum_{k=0}^n k \cdot x^k =
+	(x \cdot (n \cdot x^{n + 1} - ((n + 1) \cdot x^n) + 1))/(x - 1)^2.
+\]
 \end{lemma}
 
 \begin{lemma}\label{sum_Icc_succ_eq_sum_range}
 	\lean{sum_Icc_succ_eq_sum_range}
 	\leanok
-	Given (f : ℕ → ℝ) (n : ℕ), we have
-  $f 0 + ∑ k ∈ Finset.Icc 1 n, f k
-    = ∑ k ∈ Finset.range (n+1), f k$.
+	Given $f:\mathbb N\to\mathbb R$ and $n\in\mathbb N$, we have
+\[
+	f(0) + \sum_{k=1}^n f(k) = \sum_{k=0}^n f(k).
+\]
 \end{lemma}
 
 \begin{lemma}\label{id_mul_geom_sum₁}
 	\lean{id_mul_geom_sum₁}
 	\leanok
 	\uses{sum_Icc_succ_eq_sum_range,id_mul_geom_sum}
-Given	(x : ℝ) (hx : x ≠ 1) (n : ℕ), we have
-	$∑ k ∈ Finset.Icc 1 n, k * x^k =
-	  (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2$.
+Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
+\[
+	\sum_{k=1}^n k \cdot x^k =
+	  (x \cdot (n \cdot x ^ {n + 1} - ((n + 1) \cdot x ^ n) + 1)) / (x - 1) ^ 2.
+\]
 \end{lemma}
 
 \begin{definition}\label{annuity.geom_sum}
 	\lean{annuity.geom_sum}
 	\leanok
-	$\mathrm{geom_sum}$ is the function : ℕ → ℝ → ℝ := fun n v =>
-	  $∑ k ∈ Icc 1 n, v ^ k$.
+	$\mathrm{geom\_sum}$ is the function $g : \mathbb N \to \mathbb R \to \mathbb R$ given by
+	$g(n,v)=
+	  \sum_{k=1}^n v ^ k$.
 \end{definition}
 
 \begin{definition}\label{annuity.a}
@@ -170,7 +187,10 @@ Given	(x : ℝ) (hx : x ≠ 1) (n : ℕ), we have
 	\leanok
 	\uses{annuity.geom_sum}
 	The present value of annuity function $a : \mathbb N \to \mathbb R \to \mathbb R$
-	is defined by $a n i$ equals \verb!geom_sum! $n (1 + i)^{-1}$.
+	is defined by
+	\[
+		a_{\overline n|i}=g(n, (1 + i)^{-1})
+	\] with $g$ as in Definition \ref{annuity.geom_sum}.
 \end{definition}
 
 \section{Macaulay duration}
@@ -222,9 +242,20 @@ If a continuous function starts positive at 0 and tends to a negative limit, it 
 	\uses{AriMagic.unique_solution_n,id_mul_geom_sum₁,AriMagic.exists_pos_root_of_limits}
 	
 Given $n\in\mathbb N$ with $n>1$ and $i,d,r$ positive real numbers,	 with  $d < 1 + 1 / i$,
- if the duration equation holds for $n,i,r,d$ then $n$ is given by \verb!CPT_N_from_D i d r hd hi (by linarith) hdi!.
+ if the duration equation holds for $n,i,r,d$ then $n$ is uniquely determined,
+ and given by the Lean function \verb!CPT_N_from_D!.
 \end{theorem}
 
+\section{Future work}
+	The actuarial and financial mathematics literature is vast (see for example \cite{MR2500627}) and we have only laid some of the groundwork. A general continuation would be to add stochastic components. Related initiatives include formalization of Brownian motion in Lean \cite{degenne2025formalizationbrownianmotionlean} and, tangentially, formalization of smart contracts \cite{10.1145/3700601}.
 
+	A very concrete next task would be to simply clarify to what extent two of our six variables can be computed from the other four:
+	For instance, can yield rate and maturity be computed from present value, future value, Macaulay duration, and coupon rate?
+
+\section*{Acknowledgments}
+This work was partially supported by grants from the Simons Foundation (\#704836
+to Bj{\o}rn Kjos-Hanssen) and Majesco Inc.~(University of Hawai\textquoteleft i Foundation
+Account \#129-4770-4).
+\newpage
 \bibliographystyle{plain}
 \bibliography{cited}

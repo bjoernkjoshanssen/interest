@@ -85,6 +85,47 @@ lemma D_upper_bound (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) : D n i r
   linarith
   exact hr
 
+lemma D_upper_bound_strict (n : ℕ) (hn : n ≥ 2) {i r : ℝ} (hi : i > -1) (hr : r > 0) :
+    D n i r < n := by
+  have h₄ := by apply bond_price_pos n hi (by linarith)
+  unfold bond_price at h₄
+  unfold bond_price_sum at *
+  apply (div_lt_iff₀ h₄).mpr
+  suffices r * Ia n i < r * (↑n * a n i) by
+    unfold a at this
+    linarith
+  suffices Ia n i < (↑n * a n i) by
+    generalize Ia n i = α at *
+    generalize n * a n i = β at *
+    exact (mul_lt_mul_iff_of_pos_left hr).mpr this
+  unfold Ia a geom_sum
+  rw [Finset.mul_sum]
+  apply sum_lt_sum
+  intro k hk
+  simp at hk
+  refine mul_le_mul_of_nonneg_right ?_ ?_
+  simp
+  exact hk.2
+  apply pow_nonneg
+  simp
+  linarith
+  use 1
+  constructor
+  simp
+  omega
+  have : (1 + i)⁻¹ ^ 1 > 0 := by
+    simp
+    linarith
+  generalize (1 + i)⁻¹ ^ 1 = v at *
+  have : (1:ℝ) < (n:ℝ) := by simp;omega
+  apply mul_lt_mul
+  convert this
+  simp
+  simp
+  tauto
+  simp
+
+
 
 /-- The duration of a bond is nonnegative. -/
 lemma duration_nonneg (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) :
@@ -249,6 +290,24 @@ lemma duration_yield_zero {n : ℕ}
   linarith
 
 
+lemma annuity_bond_price_ne_zero {n : ℕ} (hnn : n > 1) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) :
+    annuity.bond_price n i r ≠ 0 := by
+  apply ne_of_gt
+  calc _ < 0 + (1 + i)⁻¹ ^ n := by simp;apply pow_pos;linarith
+        _ ≤ _ := add_le_add
+          (mul_nonneg hr $ le_of_lt $ geom_sum_positive hnn hi) $ le_refl _
+
+lemma eq_D_of_duration_equation {n : ℕ} (hnn : n > 1)
+    {i d r : ℝ} (hi : i > -1) (hr : r ≥ 0)
+    (hann : duration_equation n i r d): d = D n i r := by
+  apply mul_right_cancel₀ (annuity_bond_price_ne_zero hnn hi hr)
+  have hdur := D_duration_equation n (by linarith : i > -1) hr
+  unfold duration_equation at hann hdur
+  linarith
+
+lemma duration_bounded_by_maturity {n : ℕ} (hnn : n > 1) {i d r : ℝ} (hi : i > -1) (hr : r ≥ 0)
+    (hann : duration_equation n i r d) : d ≤ n :=
+  eq_D_of_duration_equation hnn hi hr hann ▸ D_upper_bound n hi hr
 
 
 /-- For a bond with maturity `n=2`, explicitly find the yield rate `i` from the Macaulay duration `d`
@@ -257,9 +316,18 @@ and the coupon rate `r`. For larger `n` it is not generally uniquely solvable.
 Note that if i=r, (d-1)r = 2-d, i.e., i = (2-d)/(d-1).
 -/
 lemma eq_CPT_I_of_D_maturity2
-    {i d r : ℝ} (hi : i > -1) (hd : d ∈ Set.Ioo 1 2) (hri : r > 0)
+    {i d r : ℝ} (hi : i > -1) (hd : 1 ≠ d) (hri : r > 0)
     (h : duration_equation 2 i r d) :
-    i = (2 - d) * (r + 1) / ((d - 1) * r) - 1 := by
+    i = (2 - d) * (r + 1)
+     / ((d - 1) * r) - 1 := by
+  have : d < 2 := by
+    have := @eq_D_of_duration_equation 2 (by simp) i d r hi (by linarith)
+      h
+    rw [this]
+    apply D_upper_bound_strict
+    simp
+    exact hi
+    exact hri
   set v := (1+i)⁻¹
   unfold duration_equation annuity.bond_price
     annuity.bond_price_sum annuity.Ia annuity.geom_sum annuity.id_mul_geom_sum at h
@@ -272,9 +340,14 @@ lemma eq_CPT_I_of_D_maturity2
       linarith
   have : (d-2) * (r+1) * v + (d-1) * r = 0 :=
       (mul_eq_zero_iff_left hv).mp $ by linarith
-  simp at hd
   have hβ : (d-2) * (r+1) ≠ 0 := by simp; constructor <;> linarith
-  have hγ : (1-d)*r       ≠ 0 := by simp; constructor <;> linarith
+  have hγ : (1-d)*r       ≠ 0 := by
+    simp
+    constructor
+    intro hc
+    apply hd
+    linarith
+    linarith
   have : v = (- (d-1) * r) / ((d-2) * (r+1)) :=
     CancelDenoms.cancel_factors_eq_div (by linarith) hβ
   field_simp [v] at this
@@ -282,7 +355,7 @@ lemma eq_CPT_I_of_D_maturity2
   field_simp at this
   have h₃ : (1+i) ≠ 0 := by linarith
   have h₀ : (1+i)⁻¹ ≠ 0 := by simp;tauto
-  have h₁ : d-1≠0 := by linarith
+  have h₁ : d-1≠0 := by contrapose! hd;linarith
   have h₂ : d-2≠0 := by linarith
   field_simp at this ⊢
   linarith
@@ -344,26 +417,9 @@ lemma eq_CPT_I_of_D {n : ℕ} (hnn : n ≥ 2) {i d r : ℝ} (hd : d ∈ Set.Ioo 
   linarith
 
 
-lemma annuity_bond_price_ne_zero {n : ℕ} (hnn : n > 1) {i r : ℝ} (hi : i ≥ 0) (hr : r ≥ 0) :
-    annuity.bond_price n i r ≠ 0 := by
-  apply ne_of_gt
-  calc _ < 0 + (1 + i)⁻¹ ^ n := by simp;positivity
-        _ ≤ _ := add_le_add
-          (mul_nonneg hr $ le_of_lt $ geom_sum_positive hnn hi) $ le_refl _
-
-lemma eq_D_of_duration_equation {n : ℕ} (hnn : n > 1)
-    {i d r : ℝ} (hi : i ≥ 0) (hr : r ≥ 0)
-    (hann : duration_equation n i r d): d = D n i r := by
-  apply mul_right_cancel₀ (annuity_bond_price_ne_zero hnn hi hr)
-  have hdur := D_duration_equation n (by linarith : i > -1) hr
-  unfold duration_equation at hann hdur
-  linarith
 
 
 
-lemma duration_bounded_by_maturity {n : ℕ} (hnn : n > 1) {i d r : ℝ} (hi : i ≥ 0) (hr : r ≥ 0)
-    (hann : duration_equation n i r d) : d ≤ n :=
-  eq_D_of_duration_equation hnn hi hr hann ▸ D_upper_bound n (by linarith : i > -1) hr
 
 
 /-- Aristotle's proof. -/
@@ -392,7 +448,7 @@ lemma eq_CPT_N_of_D.helper {n : ℕ} (hnn : n > 1)
     {i d r : ℝ} (hi : i > 0) (hri : r ≥ i)
     (hann : duration_equation n i r d) :
      d < 1 + 1 / i :=
-  eq_D_of_duration_equation hnn (le_of_lt hi) (by linarith : r ≥ 0) hann
+  eq_D_of_duration_equation hnn (by linarith) (by linarith : r ≥ 0) hann
      ▸ eq_CPT_N_of_D.helper₀ hnn hi hri
 
 /-- This version does not assume r<i or r>i. -/
