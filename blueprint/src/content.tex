@@ -9,7 +9,7 @@ We also do the same for a Macaulay duration equation, with some help with Harmon
 
 \section{Introduction}
 	In this article we report on a project to formalize interest theory in the proof assistant Lean \cite{demoura21lean4}
-	in a library, Interest.
+	in a library, Interest \cite{interest}.
 
 Presently it includes results on the existence of a unique solution for any of these given the others:
 \begin{itemize}
@@ -192,6 +192,39 @@ Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
 		a_{\overline n|i}=g(n, (1 + i)^{-1})
 	\] with $g$ as in Definition \ref{annuity.geom_sum}.
 \end{definition}
+
+
+\subsection{Lemmas about correctness of CPT key}
+Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}) we have the following five lemmas.
+
+\begin{lemma}\label{PMT_eq_CPT_PMT}
+$PMT$ equals $CPT PMT$.
+\end{lemma}
+\begin{lemma}\label{IY_eq_CPT_IY}
+$IY$ equals $CPT IY$.
+\end{lemma}
+\begin{lemma}\label{PV_eq_CPT_PV}
+$PV$ equals $CPT PV$.
+\end{lemma}
+\begin{lemma}\label{FV_eq_CPT_FV}
+$FV$ equals $CPT FV$.
+\end{lemma}
+\begin{lemma}\label{N_eq_CPT_N}
+$N$ equals $CPT N$.
+\end{lemma}
+
+
+The following theorem summarizes these results:
+\begin{theorem}\label{annuity_equation_unique_solvability}
+	\lean{annuity_equation_unique_solvability}
+	\leanok
+	\uses{PMT_eq_CPT_PMT, IY_eq_CPT_IY, PV_eq_CPT_PV, FV_eq_CPT_FV, N_eq_CPT_N}
+	Given real numbers $IY>0$, $PMT\ge 0$, $PV<0$, $FV>0$ and a natural number $N \ge 1$,
+	satisfying the annuity equation, with 
+	$(FV \cdot (IY / 100) - PMT \ne 0$, we can compute each of the five variables uniquely from the other four.
+\end{theorem}
+
+
 
 \section{Macaulay duration}
 

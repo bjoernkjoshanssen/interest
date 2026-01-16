@@ -504,8 +504,8 @@ lemma eq_CPT_N_of_D {n : ℕ} (hnn : (n : ℝ) > 0)
 --  {n : ℕ} (hnn : n > 1)
 --     {i DUR r PMT PV FV : ℝ} (hd : 0 < d) (hi : i > 0)
 --     (hr : 0 < r) (hdi : d < 1 + 1 / i) :
---     ∃! i, ∃! N,
---     duration_equation N i (PMT / FV) DUR
+--     ∃! i,
+--     duration_equation (CPT_N (100*i) PMT PV FV) i (PMT / FV) DUR
 --     ∧ annuity_equation (100 * i) PMT PV FV N := by
 
 --     sorry

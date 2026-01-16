@@ -471,7 +471,7 @@ lemma N_eq_CPT_N {IY PMT PV FV : ℝ} {N : ℕ}
     (h : annuity_equation IY PMT PV FV N)
     (h₀ : IY ≠ 0)
     (h₁ : IY ≠ -100)
-    (h₄ : IY / 100 ≠ -2)
+    (h₂ : IY / 100 ≠ -2)
     (h_nonpar : FV * (IY / 100) - PMT ≠ 0) :
     N = CPT_N IY PMT PV FV := by
   unfold annuity_equation at h
@@ -502,7 +502,7 @@ lemma N_eq_CPT_N {IY PMT PV FV : ℝ} {N : ℕ}
       linarith
     constructor
     · exact h₀
-    · contrapose! h₄
+    · contrapose! h₂
       linarith
   have : N = (log ((-PV * (IY / 100) - PMT)
     / (FV * (IY / 100) - PMT))) / (log (1 + IY / 100)⁻¹) := by
@@ -998,23 +998,23 @@ theorem annuity_equation_unique_solvability {IY PMT PV FV : ℝ} {N : ℕ}
     PMT = CPT_PMT IY PV FV N ∧
     IY  = CPT_IY hann hN hPMT hPV hFV (le_of_lt hIY)) ∧
     PV  = CPT_PV IY PMT FV N ∧
-    FV  = CPT_FV IY PMT PV N ∧ (PMT ≠ FV * (IY / 100) →
+    FV  = CPT_FV IY PMT PV N ∧ (FV * (IY / 100) - PMT ≠ 0 →
     N   = CPT_N IY PMT PV FV) := by
-  have hI₀ : IY > -100 := by linarith
+  have hI : IY > -100 := by linarith
+  have hI₀ : IY ≠ 0 := by linarith
   have hI₁ : IY ≠ -100 := by linarith
   have hI₂ : IY / 100 ≠ -2 := by linarith
   constructor
   · intro hN
     constructor
-    exact PMT_eq_CPT_PMT hann hI₀ hN
-    exact IY_eq_CPT_IY _ _ _ _ _ hann hI₀
+    exact PMT_eq_CPT_PMT hann hI hN
+    exact IY_eq_CPT_IY _ _ _ _ _ hann hI
     -- exact IY_eq_CPT_IY _ _ (by apply of_IY_nonneg hann;linarith;tauto;tauto) _ _ hann hI₀
   · constructor
     exact PV_eq_CPT_PV hann
     constructor
     · exact FV_eq_CPT_FV hann hI₁
-    · intro hx
-      exact N_eq_CPT_N hann (ne_of_gt hIY) hI₁ hI₂ (by contrapose! hx;linarith)
+    · exact N_eq_CPT_N hann hI₀ hI₁ hI₂
 
 
 /-- By setting `PMT=0` we obtain the unique solvability of the
