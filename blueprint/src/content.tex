@@ -35,8 +35,8 @@ In order to deduce the maturity date and the yield rate from the Macaulay durati
 
 \begin{figure}
     \centering
-\includegraphics[width=10cm]{TI-BA-II-Plus.jpg}
-    \caption{An early TI BA II Plus with the TVM keys N, I/Y, PV, PMT, FV in the third row. (Wikipedia)}
+\includegraphics[width=8cm]{TI-BA-II-Plus.jpg}
+    \caption{An early TI BA II Plus calculator with the TVM (time value of money) keys N, I/Y, PV, PMT, FV in the third row. (Wikipedia)}
     \label{fig:calc}
 \end{figure}
 
@@ -197,19 +197,65 @@ Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
 \subsection{Lemmas about correctness of CPT key}
 Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}) we have the following five lemmas.
 
+\begin{definition}\label{CPT_PV}
+	\lean{CPT_PV}
+	\leanok
+	Defines a function to compute PV.
+\end{definition}
+\begin{definition}\label{CPT_PMT}
+	\lean{CPT_PMT}
+	\leanok
+	\uses{annuity.a}
+	Defines a function to compute PMT, as
+	\verb!(-PV - FV * (1 + IY / 100)⁻¹ ^ N) / annuity.a N (IY / 100)!.
+\end{definition}
+\begin{definition}\label{CPT_IY}
+	\lean{CPT_IY}
+	\leanok
+	Defines a function to compute IY.
+\end{definition}
+\begin{definition}\label{CPT_N}
+	\lean{CPT_N}
+	\leanok
+	Defines a function to compute N, as
+	\verb!  (log ((PV * (IY / 100) + PMT) / (PMT - FV * (IY / 100)))) / (log (1 + IY / 100)⁻¹)!.
+\end{definition}
+\begin{definition}\label{CPT_FV}
+	\lean{CPT_FV}
+	\leanok
+	\uses{annuity.a}
+	Defines a function to compute FV, as
+	\verb!(- PV - PMT * (annuity.a N (IY / 100))) / ((1 + IY/100)⁻¹ ^ N)!.
+\end{definition}
+
 \begin{lemma}\label{PMT_eq_CPT_PMT}
+	\lean{PMT_eq_CPT_PMT}
+	\leanok
+	\uses{CPT_PMT}
 $PMT$ equals $CPT PMT$.
 \end{lemma}
 \begin{lemma}\label{IY_eq_CPT_IY}
+	\lean{IY_eq_CPT_IY}
+	\leanok
+	\uses{CPT_IY}
 $IY$ equals $CPT IY$.
 \end{lemma}
 \begin{lemma}\label{PV_eq_CPT_PV}
+	\lean{PV_eq_CPT_PV}
+	\leanok
+	\uses{CPT_PV}
 $PV$ equals $CPT PV$.
 \end{lemma}
 \begin{lemma}\label{FV_eq_CPT_FV}
+	\lean{FV_eq_CPT_FV}
+	\leanok
+	\uses{CPT_FV}
 $FV$ equals $CPT FV$.
 \end{lemma}
 \begin{lemma}\label{N_eq_CPT_N}
+	\lean{N_eq_CPT_N}
+	\leanok
+	\uses{CPT_N}
 $N$ equals $CPT N$.
 \end{lemma}
 
