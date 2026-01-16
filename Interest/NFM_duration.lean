@@ -12,33 +12,10 @@ for a speculative future calculator.
 
 Main results:
 
-* `annuity_equation_unique_solvability`
-* `TVM_equation_unique_solvability`: by setting PMT=0 in
-  the annuity equation we obtain unique solution for the
-  Time Value of Money equation as well.
-
-lemma eq_CPT_I_of_D {n : ℕ} (hnn : n ≥ 2)
-    {i d r : ℝ} (hd : d ∈ Set.Ioo (1:ℝ) n)
-    (hr : r > 0) :
-    ∃! i > -1, duration_equation n i r d
-lemma eq_CPT_I_of_D_par {n : ℕ} (hn : n ≥ 2 ) -- if n=1, then D=n and we can't infer i.
-    {i : ℝ} (hi : i > -1) {d : ℝ} (hd : 0 < d - 1)
-    (h :  duration_equation n i i d) :
-    let hn₀ : n - 1 ≠ 0 := by contrapose! hn;omega
-    yield hn₀ ⟨d - 1, hd⟩ = i := by
-
-lemma eq_CPT_N_of_D {n : ℕ} (hnn : n > 1)
-    {i d r : ℝ} (hd : d ∈ Set.Ioi (1:ℝ)) (hi : i > 0)
-    (hr : r > i)
-    (hann : duration_equation n i r d) :
-    let hdi : d < 1 + 1 / i :=
-    eq_D_of_duration_equation hnn hi (lt_trans hi hr) hann ▸  @inequality_proof n hnn i r hi (le_of_lt hr)
-    n = CPT_N_of_D hd hi hr hdi := by
-lemma eq_CPT_N_of_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
-    (h :  duration_equation n i i d) :
-    n = CPT_N_of_D_par i d := by
-
-
+* `eq_CPT_I_of_D`: if `D>1`, `n ≥ 2`, and `r>0` then we can uniquely
+  compute the yield rate `i > -1` from the duration equation.
+* `eq_CPT_N_of_D`: if `i,d,r>0` and `d<1+1/i` then we
+can uniquely compute `n` from the duration equation.
 -/
 
 open Finset Real Filter

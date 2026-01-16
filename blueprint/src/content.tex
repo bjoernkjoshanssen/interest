@@ -174,18 +174,33 @@ and we cannot infer $n$ from $D$ except at the extremum.
 
 \begin{tabular}{ l l l}
 			  & $r<i$											& $r > i$	\\
-$d < 1 + 1/i$ &	can recover (\emph{unique\_solution})			& can recover (\emph{final\_result})\\
-$d > 1 + 1/i$ &	cannot recover		& impossible\\
+$d < 1 + 1/i$ &	can recover $n$			& can recover $n$\\
+$d > 1 + 1/i$ &	cannot recover $n$		& (impossible)\\
 \end{tabular}
 
-Combining these results the requirement is that $d < 1 + 1 / i$ overall.
-Aristotle \cite{achim2025aristotleimolevelautomatedtheorem} provided a single proof of that.
+Aristotle \cite{achim2025aristotleimolevelautomatedtheorem} provided a single proof that $d<1+1/i$ suffices,
+without doing a case split on whether $r<i$.
 
 \begin{lemma}\label{AriMagic.exists_pos_root_of_limits}
 	\lean{AriMagic.exists_pos_root_of_limits}
 	\leanok
 If a continuous function starts positive at 0 and tends to a negative limit, it has a positive root.
 \end{lemma}
+
+\begin{lemma}\label{AriMagic.unique_solution_n}
+	\lean{AriMagic.unique_solution_n}
+	\leanok
+	Given $D>0, i>0, r>0$, with $D < 1 + 1/i$, there is a unique solution for the maturity $N$
+	in the duration equation with duration $D$, yield rate $i$, and coupon rate $r$.
+\end{lemma}
+
+\begin{theorem}
+	\label{eq_CPT_I_of_D}
+	\lean{eq_CPT_I_of_D}
+	\leanok
+	If $D>1$, $n \ge 2$, and $r > 0$ then we can uniquely
+	compute the yield rate $i > -1$ from the duration equation.
+\end{theorem}
 
 \begin{theorem}
 	\label{eq_CPT_N_of_D}
