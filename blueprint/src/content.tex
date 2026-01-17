@@ -11,15 +11,8 @@ We also do the same for a Macaulay duration equation, with some help with Harmon
 	In this article we report on a project to formalize interest theory in the proof assistant Lean \cite{demoura21lean4}
 	in a library, Interest \cite{interest}.
 
-Presently it includes results on the existence of a unique solution for any of these given the others:
-\begin{itemize}
-	\item present value of an annuity;
-	\item future value;
-	\item periodic payment (equivalently, coupon rate for a bond);
-	\item prevailing interest rate (yield);
-	\item Macaulay duration;
-	\item maturity date of a bond.
-\end{itemize}
+Presently it includes results on the existence of a unique solution for any of these given the others: the present value of an annuity PV; future value FV; periodic payment PMT (equivalently, coupon rate $r$ for a bond); prevailing interest rate I/Y (yield); Macaulay duration $D$; maturity date $n$.
+
 In order to deduce the maturity date and the yield rate from the Macaulay duration we made use of Aristotle \cite{achim2025aristotleimolevelautomatedtheorem} by Harmonic, which saved a lot of time.
 
 	The mathematical theory of interest, often known as simply financial mathematics within actuarial science,
@@ -37,7 +30,7 @@ In order to deduce the maturity date and the yield rate from the Macaulay durati
 
 % \begin{figure}
 %     \centering
-% \includegraphics[width=8cm]{TI-BA-II-Plus.jpg}
+% \includegraphics[width=6cm]{TI-BA-II-Plus.jpg}
 %     \caption{An early TI BA II Plus calculator with the TVM (time value of money) keys N, I/Y, PV, PMT, FV in the third row. (Wikipedia)}
 %     \label{fig:calc}
 % \end{figure}
@@ -83,30 +76,31 @@ Solving for $x$,
 \]
 This inequality is (unsurprisingly) also encountered in our Lean code.
 
-Note that PMT/i is the perpetuity-equivalent principal, and we are saying it must be on the same side (left or right) of both FV and -PV.
-
-
-
-Annuity feasibility inequality
-or
-Identifiability condition for maturity in level-payment cash flows: It’s not a “new inequality” in the sense of mathematics, but it is a very clean formulation of something practitioners assume without stating.
-
-If PMT/i is above FV then it should mean that the coupon rate $r>i$ (the yield rate), i.e., the coupon rate is high.
-But then PMT/i should also be above -PV, i.e., receiving these infintely many coupons is more valuable than what the actual contract is, i.e., receiving coupons for a while and then the redemption value.
-
-Conversely, if PMT/i is below FV then the coupons are meager. Then PMT/i should also be below -PV, i.e., receiving these coupons forever is less valuable than the actual contract.
-
-ChatGPT says it is essentially the comparison theorem for cash-flow streams hiding inside the annuity equation
-
-Another way to look at it is that if PMT/i is above -PV, it means that the price of the bond is less than getting infinitely many coupons starting now; but since both of these deals involve getting the coupons at least until time $n$, it means getting the future value is less than getting infinitely many coupons from the point of view of the future time $n$.
-
-Here's another way to look at it. If PMT/i > -PV, it means the bond (B) is worth less than the perpetuity (P). Now let's fast forward to time n. Both securities B and P have made the same payments so far. What's left? Only FV for the bond, and another PMT/i for P! So, by a monotonicity principle, PMT/i > FV as well.
-
-\emph{If a perpetuity dominates a finite bond today, then it must also dominate the bond’s redemption value once all common coupons have been stripped away.}
-
-In other words, if $C_t$ and $D_t$ are infinite cash flows streams and $C_t=D_t$ for all $t< t_0$, and $PV(C)>PV(D)$, and
-$C^{(t)}$ is the security where all payments before $t$ are removed, then $PV(C^{(t_0)})>PV(D^{(t_0)}$ as well.
-
+%START OF DISCUSSION THAT IS NOT FLESHED OUT
+% Note that PMT/i is the perpetuity-equivalent principal, and we are saying it must be on the same side (left or right) of both FV and -PV.
+%
+%
+%
+% Annuity feasibility inequality
+% or
+% Identifiability condition for maturity in level-payment cash flows: It’s not a “new inequality” in the sense of mathematics, but it is a very clean formulation of something practitioners assume without stating.
+%
+% If PMT/i is above FV then it should mean that the coupon rate $r>i$ (the yield rate), i.e., the coupon rate is high.
+% But then PMT/i should also be above -PV, i.e., receiving these infintely many coupons is more valuable than what the actual contract is, i.e., receiving coupons for a while and then the redemption value.
+%
+% Conversely, if PMT/i is below FV then the coupons are meager. Then PMT/i should also be below -PV, i.e., receiving these coupons forever is less valuable than the actual contract.
+%
+% ChatGPT says it is essentially the comparison theorem for cash-flow streams hiding inside the annuity equation
+%
+% Another way to look at it is that if PMT/i is above -PV, it means that the price of the bond is less than getting infinitely many coupons starting now; but since both of these deals involve getting the coupons at least until time $n$, it means getting the future value is less than getting infinitely many coupons from the point of view of the future time $n$.
+%
+% Here's another way to look at it. If PMT/i > -PV, it means the bond (B) is worth less than the perpetuity (P). Now let's fast forward to time n. Both securities B and P have made the same payments so far. What's left? Only FV for the bond, and another PMT/i for P! So, by a monotonicity principle, PMT/i > FV as well.
+%
+% \emph{If a perpetuity dominates a finite bond today, then it must also dominate the bond’s redemption value once all common coupons have been stripped away.}
+%
+% In other words, if $C_t$ and $D_t$ are infinite cash flows streams and $C_t=D_t$ for all $t< t_0$, and $PV(C)>PV(D)$, and
+% $C^{(t)}$ is the security where all payments before $t$ are removed, then $PV(C^{(t_0)})>PV(D^{(t_0)}$ as well.
+%%END OF DISCUSSION THAT IS NOT FLESHED OUT
 
 The Annuity Equation has apparently been implemented in financial calculators since their introduction half a century ago (June 13, 1976 for the original Texas Instruments Business Analyst \cite{TI-CL207A-1977}).
 Here we formalize the fact you can solve for any of these five variables given the other four. This is rather explicit for PV, FV, PMT, and N, but requires Newton's method for I/Y (interest per year). However, our proof is mathematical and does not concern itself with computability. It instead sticks to mathematical existence and uniqueness.
@@ -146,7 +140,28 @@ Here we formalize the fact you can solve for any of these five variables given t
   we have $\sum_{k=0}^n (1+i)^{-k}-1= \frac{1 - (1 + i)^{-n}}i$.
 \end{lemma}
 
-\begin{lemma}\label{annuity.id_mul_geom_sum_formula}
+\begin{definition}\label{id_mul_geom_sum}
+	\lean{annuity.id_mul_geom_sum}
+	\leanok
+	The expression $\sum_{k=1}^n k v^k$.
+\end{definition}
+
+\begin{definition}\label{Ia}
+	\lean{annuity.Ia}
+	\leanok
+	\uses{id_mul_geom_sum}
+	Present value of an increasing annuity: $\sum_{k=1}^n k v^k$
+	where $v=1/(1+i)$.
+\end{definition}
+
+\begin{definition}\label{D}
+	\lean{D}
+	\leanok
+	\uses{Ia, bond_price}
+	Macaulay duration.
+\end{definition}
+
+\begin{lemma}\label{id_mul_geom_sum_formula}
 \lean{annuity.id_mul_geom_sum_formula}
 \leanok
 Given $x\in\mathbb R$ with $x\ne 1$ and $n\in\mathbb N$, we have
@@ -165,10 +180,10 @@ Given $x\in\mathbb R$ with $x\ne 1$ and $n\in\mathbb N$, we have
 \]
 \end{lemma}
 
-\begin{lemma}\label{annuity.id_mul_geom_sum₁}
+\begin{lemma}\label{id_mul_geom_sum₁}
 	\lean{annuity.id_mul_geom_sum₁}
 	\leanok
-	\uses{sum_Icc_succ_eq_sum_range,annuity.id_mul_geom_sum_formula}
+	\uses{sum_Icc_succ_eq_sum_range,id_mul_geom_sum_formula}
 Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
 \[
 	\sum_{k=1}^n k \cdot x^k =
@@ -176,7 +191,7 @@ Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
 \]
 \end{lemma}
 
-\begin{definition}\label{annuity.geom_sum}
+\begin{definition}\label{geom_sum}
 	\lean{annuity.geom_sum}
 	\leanok
 	$\mathrm{geom\_sum}$ is the function $g : \mathbb N \to \mathbb R \to \mathbb R$ given by
@@ -184,17 +199,50 @@ Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
 	  \sum_{k=1}^n v ^ k$.
 \end{definition}
 
-\begin{definition}\label{annuity.a}
+\begin{definition}\label{bond_price_sum}
+	\lean{annuity.bond_price_sum}
+	\leanok
+	\uses{geom_sum}
+The bond price sum is
+$r \cdot \text{geom\_sum} (n, v) + v ^ n$.
+\end{definition}
+
+\begin{definition}\label{bond_price}
+	\lean{annuity.bond_price}
+	\leanok
+	\uses{bond_price_sum}
+The bond price is the bond price sum with $v=1/(1+i)$.
+\end{definition}
+
+\begin{definition}\label{a}
 	\lean{annuity.a}
 	\leanok
-	\uses{annuity.geom_sum}
+	\uses{geom_sum}
 	The present value of annuity function $a : \mathbb N \to \mathbb R \to \mathbb R$
 	is defined by
 	\[
 		a_{\overline n|i}=g(n, (1 + i)^{-1})
-	\] with $g$ as in Definition \ref{annuity.geom_sum}.
+	\] with $g$ as in Definition \ref{geom_sum}.
 \end{definition}
 
+\begin{definition}\label{a_formula}
+	\lean{annuity.a_formula}
+	\leanok
+	\uses{geom_sum}
+	The expression for the present value of annuity
+	that is well-defined even for non-integer $n$:
+	$(1 - (1+i)^{-n}) / i$.
+\end{definition}
+
+\begin{lemma}\label{a_eq_a_formula}
+	\lean{annuity.a_eq_a_formula}
+	\leanok
+	\uses{a_formula, a, sum_pow_interest}
+	The value of the expression for the present value of annuity
+	that is well-defined even for non-integer $n$
+	is equal to the original value.
+  
+\end{lemma}
 
 \subsection{Lemmas about correctness of CPT key}
 Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}) we have the following five lemmas.
@@ -202,34 +250,34 @@ Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}
 \begin{definition}\label{CPT_PV}
 	\lean{CPT_PV}
 	\leanok
-	\uses{annuity.a}
-	Defines a function to compute PV, as
+	\uses{a}
+	Defines a function to compute PV, as\\
 	\verb!  - PMT * (annuity.a N (IY / 100)) - FV * (1 + IY/100)⁻¹ ^ N!.
 \end{definition}
 \begin{definition}\label{CPT_PMT}
 	\lean{CPT_PMT}
 	\leanok
-	\uses{annuity.a}
-	Defines a function to compute PMT, as
+	\uses{a}
+	Defines a function to compute PMT, as\\
 	\verb!(-PV - FV * (1 + IY / 100)⁻¹ ^ N) / annuity.a N (IY / 100)!.
 \end{definition}
 \begin{definition}\label{CPT_IY}
 	\lean{CPT_IY}
 	\leanok
-	\uses{annuity.a}
+	\uses{a}
 	Defines a function to compute IY.
 \end{definition}
 \begin{definition}\label{CPT_N}
 	\lean{CPT_N}
 	\leanok
-	Defines a function to compute N, as
+	Defines a function to compute N, as\\
 	\verb!  (log ((PV * (IY / 100) + PMT) / (PMT - FV * (IY / 100)))) / (log (1 + IY / 100)⁻¹)!.
 \end{definition}
 \begin{definition}\label{CPT_FV}
 	\lean{CPT_FV}
 	\leanok
-	\uses{annuity.a}
-	Defines a function to compute FV, as
+	\uses{a}
+	Defines a function to compute FV, as\\
 	\verb!(- PV - PMT * (annuity.a N (IY / 100))) / ((1 + IY/100)⁻¹ ^ N)!.
 \end{definition}
 
@@ -260,7 +308,7 @@ $FV$ equals $CPT FV$.
 \begin{lemma}\label{N_eq_CPT_N}
 	\lean{N_eq_CPT_N}
 	\leanok
-	\uses{CPT_N}
+	\uses{CPT_N,a_eq_a_formula}
 $N$ equals $CPT N$.
 \end{lemma}
 
@@ -315,6 +363,7 @@ If a continuous function starts positive at 0 and tends to a negative limit, it 
 	\label{eq_CPT_I_of_D}
 	\lean{eq_CPT_I_of_D}
 	\leanok
+	\uses{D}
 	If $D>1$, $n \ge 2$, and $r > 0$ then we can uniquely
 	compute the yield rate $i > -1$ from the duration equation.
 \end{theorem}
@@ -323,7 +372,7 @@ If a continuous function starts positive at 0 and tends to a negative limit, it 
 	\label{eq_CPT_N_of_D}
 	\lean{eq_CPT_N_of_D}
 	\leanok
-	\uses{AriMagic.unique_solution_n,annuity.id_mul_geom_sum₁,AriMagic.exists_pos_root_of_limits}
+	\uses{D,AriMagic.unique_solution_n,id_mul_geom_sum₁,AriMagic.exists_pos_root_of_limits}
 	
 Given $n\in\mathbb N$ with $n>1$ and $i,d,r$ positive real numbers,	 with  $d < 1 + 1 / i$,
  if the duration equation holds for $n,i,r,d$ then $n$ is uniquely determined,
