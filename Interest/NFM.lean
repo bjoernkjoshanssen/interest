@@ -35,7 +35,50 @@ theorem sum_pow_interest (n : ℕ) {i : ℝ} (hi : i ≠ 0) (hi' : 1 + i ≠ 0) 
   .trans (congrArg (fun x => x-1) <| sum_pow (n+1)
     fun hc => hi <| left_eq_add.mp (inv_eq_one.mp hc).symm) (by grind)
 
-lemma id_mul_geom_sum (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Finset.range (n+1), k * x^k =
+
+lemma sum_Icc_succ_eq_sum_range (f : ℕ → ℝ) (n : ℕ) :
+  f 0 + ∑ k ∈ Finset.Icc 1 n, f k
+    = ∑ k ∈ Finset.range (n+1), f k := by
+  have := @Nat.range_succ_eq_Icc_zero
+  rw [this]
+  have : Finset.Icc 0 n = Finset.Ico 0 1 ∪ Finset.Icc 1 n := by
+    ext j
+    simp
+    constructor
+    intro
+    by_cases H : j = 0
+    left
+    tauto
+    right
+    simp at H
+    constructor
+    contrapose! H
+    linarith
+    tauto
+    intro h
+    cases h with
+    | inl h => subst h;simp
+    | inr h => tauto
+  rw [this]
+  simp
+
+
+namespace annuity
+
+/-- The present value of the first `n` payments of an annuity of
+1 per period, with interest rate `i`.
+There is a notation clash with the accumulation function `a`.
+`annuity.a` versus `a`.
+Etymology: a for annuity.
+-/
+
+def geom_sum : ℕ → ℝ → ℝ := fun n v =>
+  ∑ k ∈ Icc 1 n, v ^ k
+
+def id_mul_geom_sum : ℕ → ℝ → ℝ := fun n v =>
+  ∑ k ∈ Icc 1 n, k * v ^ k
+
+lemma id_mul_geom_sum_formula (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Finset.range (n+1), k * x^k =
   (x * (n * x^(n + 1) - ((n + 1) * x^n) + 1))/(x - 1)^2 := by
   induction n with
   | zero => simp
@@ -71,32 +114,6 @@ lemma id_mul_geom_sum (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Finset.rang
     simp
     linarith
 
-lemma sum_Icc_succ_eq_sum_range (f : ℕ → ℝ) (n : ℕ) :
-  f 0 + ∑ k ∈ Finset.Icc 1 n, f k
-    = ∑ k ∈ Finset.range (n+1), f k := by
-  have := @Nat.range_succ_eq_Icc_zero
-  rw [this]
-  have : Finset.Icc 0 n = Finset.Ico 0 1 ∪ Finset.Icc 1 n := by
-    ext j
-    simp
-    constructor
-    intro
-    by_cases H : j = 0
-    left
-    tauto
-    right
-    simp at H
-    constructor
-    contrapose! H
-    linarith
-    tauto
-    intro h
-    cases h with
-    | inl h => subst h;simp
-    | inr h => tauto
-  rw [this]
-  simp
-
 lemma id_mul_geom_sum₁ (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Finset.Icc 1 n, k * x^k =
   (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2 := by
   let f : ℕ → ℝ := fun k => k * x^ k
@@ -109,23 +126,8 @@ lemma id_mul_geom_sum₁ (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Finset.I
     unfold f
     simp
   rw [sum_Icc_succ_eq_sum_range]
-  apply id_mul_geom_sum
+  apply id_mul_geom_sum_formula
   tauto
-
-namespace annuity
-
-/-- The present value of the first `n` payments of an annuity of
-1 per period, with interest rate `i`.
-There is a notation clash with the accumulation function `a`.
-`annuity.a` versus `a`.
-Etymology: a for annuity.
--/
-
-def geom_sum : ℕ → ℝ → ℝ := fun n v =>
-  ∑ k ∈ Icc 1 n, v ^ k
-
-def id_mul_geom_sum : ℕ → ℝ → ℝ := fun n v =>
-  ∑ k ∈ Icc 1 n, k * v ^ k
 
 noncomputable def a : ℕ → ℝ → ℝ := fun n i =>
   geom_sum n (1 + i)⁻¹

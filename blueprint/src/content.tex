@@ -146,8 +146,8 @@ Here we formalize the fact you can solve for any of these five variables given t
   we have $\sum_{k=0}^n (1+i)^{-k}-1= \frac{1 - (1 + i)^{-n}}i$.
 \end{lemma}
 
-\begin{lemma}\label{id_mul_geom_sum}
-\lean{id_mul_geom_sum}
+\begin{lemma}\label{id_mul_geom_sum_formula}
+\lean{id_mul_geom_sum_formula}
 \leanok
 Given $x\in\mathbb R$ with $x\ne 1$ and $n\in\mathbb N$, we have
 \[
@@ -168,7 +168,7 @@ Given $x\in\mathbb R$ with $x\ne 1$ and $n\in\mathbb N$, we have
 \begin{lemma}\label{id_mul_geom_sum₁}
 	\lean{id_mul_geom_sum₁}
 	\leanok
-	\uses{sum_Icc_succ_eq_sum_range,id_mul_geom_sum}
+	\uses{sum_Icc_succ_eq_sum_range,id_mul_geom_sum_formula}
 Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
 \[
 	\sum_{k=1}^n k \cdot x^k =
@@ -202,7 +202,9 @@ Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}
 \begin{definition}\label{CPT_PV}
 	\lean{CPT_PV}
 	\leanok
-	Defines a function to compute PV.
+	\uses{annuity.a}
+	Defines a function to compute PV, as
+	\verb!  - PMT * (annuity.a N (IY / 100)) - FV * (1 + IY/100)⁻¹ ^ N!.
 \end{definition}
 \begin{definition}\label{CPT_PMT}
 	\lean{CPT_PMT}
@@ -214,6 +216,7 @@ Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}
 \begin{definition}\label{CPT_IY}
 	\lean{CPT_IY}
 	\leanok
+	\uses{annuity.a}
 	Defines a function to compute IY.
 \end{definition}
 \begin{definition}\label{CPT_N}
