@@ -146,8 +146,8 @@ Here we formalize the fact you can solve for any of these five variables given t
   we have $\sum_{k=0}^n (1+i)^{-k}-1= \frac{1 - (1 + i)^{-n}}i$.
 \end{lemma}
 
-\begin{lemma}\label{id_mul_geom_sum_formula}
-\lean{id_mul_geom_sum_formula}
+\begin{lemma}\label{annuity.id_mul_geom_sum_formula}
+\lean{annuity.id_mul_geom_sum_formula}
 \leanok
 Given $x\in\mathbb R$ with $x\ne 1$ and $n\in\mathbb N$, we have
 \[
@@ -165,10 +165,10 @@ Given $x\in\mathbb R$ with $x\ne 1$ and $n\in\mathbb N$, we have
 \]
 \end{lemma}
 
-\begin{lemma}\label{id_mul_geom_sum₁}
-	\lean{id_mul_geom_sum₁}
+\begin{lemma}\label{annuity.id_mul_geom_sum₁}
+	\lean{annuity.id_mul_geom_sum₁}
 	\leanok
-	\uses{sum_Icc_succ_eq_sum_range,id_mul_geom_sum_formula}
+	\uses{sum_Icc_succ_eq_sum_range,annuity.id_mul_geom_sum_formula}
 Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
 \[
 	\sum_{k=1}^n k \cdot x^k =
@@ -323,7 +323,7 @@ If a continuous function starts positive at 0 and tends to a negative limit, it 
 	\label{eq_CPT_N_of_D}
 	\lean{eq_CPT_N_of_D}
 	\leanok
-	\uses{AriMagic.unique_solution_n,id_mul_geom_sum₁,AriMagic.exists_pos_root_of_limits}
+	\uses{AriMagic.unique_solution_n,annuity.id_mul_geom_sum₁,AriMagic.exists_pos_root_of_limits}
 	
 Given $n\in\mathbb N$ with $n>1$ and $i,d,r$ positive real numbers,	 with  $d < 1 + 1 / i$,
  if the duration equation holds for $n,i,r,d$ then $n$ is uniquely determined,
