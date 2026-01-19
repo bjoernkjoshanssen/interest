@@ -149,86 +149,85 @@ lemma yield_exists.small_epsilon {n : ℕ} (hn : n ≠ 0) {ε : ℝ} (hε : 0 < 
 noncomputable def yield_exists {n : ℕ} (hn : n ≠ 0) {ε : ℝ}
     (hε : 0 < ε) :
     ∃! i > -1, ε = annuity.a n i := by
-        have hnr : (n:ℝ) ≥ 1 := by simp;omega
-        have hnr₀ : (n:ℝ) > 0 := by simp;omega
-        have hnn : n ≥ 1 := by omega
-        have hnn₀ : n > 0 := by omega
-        have hmm (m : ℕ) (hm : m ≥ 1) : annuity.a n (-1 + 1/m) ≥ m := by
-            unfold annuity.a
-            rw [add_neg_cancel_left, one_div, inv_inv]
-            simp
-            apply le_geom_self hnr m hm
-        have : annuity.a n 0 = n := by unfold annuity.a annuity.geom_sum;simp
-        by_cases H : ε < 1
-        · exact yield_exists.small_epsilon hn hε hnr hnr₀ hnn₀ H
-        have : annuity.a n (2 * n - 1) < ε := by
-            unfold annuity.a
-            rw [add_sub_cancel]
-            simp at H
-            calc _ ≤ _ := yield_exists.sum hn hnr
-                 _ < (1:ℝ) := by
-                    rw [Finset.sum_const]
-                    field_simp
-                    simp
-                    field_simp
-                    simp
-                 _ ≤ _ := H
-        have ⟨m,hm⟩ := exists_nat_ge ε
-        have hbound:  (-1:ℝ) + 1 / ↑m ≤ 2 * ↑n - 1 := by
-            suffices (1:ℝ) / ↑m ≤ 2 * ↑n by linarith
-            apply le_trans
-            show (1:ℝ) / m ≤ 1
-            simp at H
-            apply le_trans $ one_div_le_one_div_of_le hε hm
-            · exact (div_le_one₀ hε).mpr H
-            linarith
-        have hcont : ContinuousOn (annuity.a n)
-            (Set.Icc (-1 + 1 / ↑m) (2 * ↑n - 1)) := by
-            apply ContinuousOn.mono
-            · apply annuity_continuous
-              exact 2*n-1
-            intro x hx
-            simp at hx ⊢
-            constructor
-            · exact yield_exists.x hε hm hx.1
-            · exact hx.2
-        have hrange : ε ∈ Set.Icc (annuity.a n (2 * ↑n - 1))
-                                  (annuity.a n (-1 + 1 / ↑m)) := by
-            simp
-            constructor
-            linarith
-            apply le_trans hm
-            specialize hmm m (by
-                simp at H
-                have : (1:ℝ) ≤ m := by linarith
-                simp at this
-                tauto)
-            simp at hmm
-            exact hmm
-        have ⟨i,hi⟩ := @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _
-            (-1 + 1/m) (2 * n - 1) hbound (annuity.a n) hcont ε hrange
-        simp at hi this
-        have hin : -1 < i := by
-            calc -1 < -1 + (m:ℝ)⁻¹ := by
-                  refine lt_neg_add_iff_add_lt.mpr ?_
-                  simp only [add_neg_cancel, inv_pos]
-                  linarith
-            _  ≤ i := by linarith
-        use i
-        simp
+  have hnr : (n:ℝ) ≥ 1 := by simp;omega
+  have hnr₀ : (n:ℝ) > 0 := by simp;omega
+  have hnn : n ≥ 1 := by omega
+  have hnn₀ : n > 0 := by omega
+  have hmm (m : ℕ) (hm : m ≥ 1) : annuity.a n (-1 + 1/m) ≥ m := by
+      unfold annuity.a
+      rw [add_neg_cancel_left, one_div, inv_inv]
+      simp
+      apply le_geom_self hnr m hm
+  have : annuity.a n 0 = n := by unfold annuity.a annuity.geom_sum;simp
+  by_cases H : ε < 1
+  · exact yield_exists.small_epsilon hn hε hnr hnr₀ hnn₀ H
+  have : annuity.a n (2 * n - 1) < ε := by
+      unfold annuity.a
+      rw [add_sub_cancel]
+      simp at H
+      calc _ ≤ _ := yield_exists.sum hn hnr
+           _ < (1:ℝ) := by
+              rw [Finset.sum_const]
+              field_simp
+              simp
+              field_simp
+              simp
+            _ ≤ _ := H
+  have ⟨m,hm⟩ := exists_nat_ge ε
+  have hbound:  (-1:ℝ) + 1 / ↑m ≤ 2 * ↑n - 1 := by
+      suffices (1:ℝ) / ↑m ≤ 2 * ↑n by linarith
+      apply le_trans
+      show (1:ℝ) / m ≤ 1
+      simp at H
+      apply le_trans $ one_div_le_one_div_of_le hε hm
+      · exact (div_le_one₀ hε).mpr H
+      linarith
+  have hcont : ContinuousOn (annuity.a n)
+      (Set.Icc (-1 + 1 / ↑m) (2 * ↑n - 1)) := by
+      apply ContinuousOn.mono
+      · exact annuity_continuous (i := 2 * n - 1)
+      · apply (Set.Icc_subset_Ioc_iff hbound).mpr
         constructor
-        · exact ⟨yield_exists.x hε hm hi.1.1, hi.2.symm⟩
-        have := @yield_exists.y
-        intro y hyn hyε
-        by_contra H
-        have : y < i ∨ i < y := lt_or_gt_of_ne H
-        cases this with
-        | inl h =>
-            have := annuity.annuity_antitone hn h hyn
+        · apply lt_add_of_pos_right (-1)
+          rw [one_div, inv_pos]
+          exact lt_of_lt_of_le hε hm
+        · exact le_refl _
+  have hrange : ε ∈ Set.Icc (annuity.a n (2 * ↑n - 1))
+                            (annuity.a n (-1 + 1 / ↑m)) := by
+      simp only [one_div, Set.mem_Icc]
+      constructor
+      · exact le_of_lt this
+      · apply le_trans hm
+        specialize hmm m (by
+            rw [not_lt] at H
+            exact Nat.one_le_cast.mp $ le_trans H hm
+            )
+        simp at hmm
+        exact hmm
+  have ⟨i,hi⟩ := @intermediate_value_Icc' ℝ _ _ _ _ ℝ _ _ _
+      (-1 + 1/m) (2 * n - 1) hbound (annuity.a n) hcont ε hrange
+  simp at hi this
+  have hin : -1 < i := by
+      calc -1 < -1 + (m:ℝ)⁻¹ := by
+            refine lt_neg_add_iff_add_lt.mpr ?_
+            simp only [add_neg_cancel, inv_pos]
             linarith
-        | inr h =>
-            have := annuity.annuity_antitone hn h hin
-            linarith
+      _  ≤ i := by linarith
+  use i
+  simp
+  constructor
+  · exact ⟨yield_exists.x hε hm hi.1.1, hi.2.symm⟩
+  have := @yield_exists.y
+  intro y hyn hyε
+  by_contra H
+  have : y < i ∨ i < y := lt_or_gt_of_ne H
+  cases this with
+  | inl h =>
+      have := annuity.annuity_antitone hn h hyn
+      linarith
+  | inr h =>
+      have := annuity.annuity_antitone hn h hin
+      linarith
 
 /-- Inverse of the annuity function. -/
 noncomputable def yield {n : ℕ} (hn : n ≠ 0) :
@@ -339,8 +338,9 @@ lemma eq_CPT_I_of_D_par {n : ℕ} (hn : n ≥ 2 ) -- if n=1, then D=n and we can
     rw [this] at h
     rw [congrFun $ annuity.a_eq_a_formula (H) (by linarith)] at h
     unfold annuity.a_formula annuity.Ia annuity.id_mul_geom_sum at h
-    have := @id_mul_geom_sum₁ (1+i)⁻¹ (by
+    have := @id_mul_geom_sum_formula (1+i)⁻¹ (by
         intro hc;simp at hc;exact H hc) n
+    unfold id_mul_geom_sum at this
     rw [this] at h
     have : i ≠ 0 := H
     have : 1 + i ≠ 0 := by linarith

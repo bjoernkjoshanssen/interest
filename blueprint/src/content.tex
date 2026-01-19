@@ -1,10 +1,16 @@
+
 \begin{abstract}
-Calculators such as the BA II Plus Professional are used by actuaries to make critical decisions. Consequently, formal verification of the underlying mathematics is important.
+Standard actuarial education includes an exam on financial mathematics, specifically the mathematical theory of interest rates.
+In this article we describe a project taking the first steps toward formalizing this
+theory in the proof assistant \textsc{Lean}.
+As Lean's Mathlib library already has a thorough coverage of calculus, we are able to develop the theory of interest directly.
 
-The Annuity Equation is a staple of actuarial science and financial mathematics, relating a payment [PMT], present value [PV], future value [FV], interest rate [I/Y], and number of periods [N]. The BA II Plus Professional calculator allows a solution for any one of these five variables given the others, using keystrokes such as [CPT] [PMT].
+We start with the Annuity Equation, a staple of actuarial science and financial mathematics, relating a payment, present value, future value, interest rate, and maturity date.
 Using the Lean proof assistant, we verify the unique solvability of the Annuity Equation for each variable under reasonable assumptions.
+We next do the same for a Macaulay duration equation, with some help from Harmonic's mathematical superintelligence tool \textsc{Aristotle}.
 
-We also do the same for a Macaulay duration equation, with some help with Harmonic's ``mathematical superintelligence'' tool Aristotle.
+Finally, using Radisic's verified numerical computation tool \textsc{LeanCert}, we are able to formally prove the correctness
+of solutions to actuarial exam questions having numerical answers.
 \end{abstract}
 
 \section{Introduction}
@@ -15,7 +21,7 @@ Presently it includes results on the existence of a unique solution for any of t
 
 In order to deduce the maturity date and the yield rate from the Macaulay duration we made use of Aristotle \cite{achim2025aristotleimolevelautomatedtheorem} by Harmonic, which saved a lot of time.
 
-	The mathematical theory of interest, often known as simply financial mathematics within actuarial science,
+	The mathematical theory of interest, often known simply as financial mathematics within actuarial science,
 	is important in the real world and is due for a formal treatment.
 	
 	We focus on the pricing of bonds and annuities in settings in which financial calculators are used by actuaries.
@@ -36,41 +42,41 @@ In order to deduce the maturity date and the yield rate from the Macaulay durati
 % \end{figure}
 
 \section{The annuity equation}
-The Annuity Equation is often left implicit in textbooks on financial mathematics such as \cite{ChanTse2021_finmath}. Nevertheless it can be considered well known. It is as follows.
-\[
-\mathrm{[PV]} + \mathrm{[PMT]}\cdot \sum_{k=1}^{\mathrm{[N]}} (1 + (\mathrm{[I/Y]}/100))^{-k} + \mathrm{[FV]} \cdot (1 + \mathrm{[I/Y]}/100)^{-\mathrm{[N]}} = 0.
-\]
+The Annuity Equation \eqref{ann_eq} is often left implicit in textbooks on financial mathematics such as \cite{ChanTse2021_finmath}.
+(We write interest per year, I/Y, as IY since it is a single variable.)
+\begin{equation}\label{ann_eq}
+\PV + \PMT\cdot \sum_{k=1}^{\N} (1 + (\IY/100))^{-k} + \FV \cdot (1 + \IY/100)^{-\N} = 0.
+\end{equation}
+Nevertheless, it should be considered well known.
+In our formalization, we assume that PV has the opposite sign of the common sign of PMT and FV. This avoids uniqueness issues stemming from Descartes' Rule of Signs, as in Norstr{\o}m's Criterion \cite{Norstrom1972IRR}.
 
-In our formalization we assume that PV has the opposite sign of the common sign of PMT and FV, in order to avoid uniqueness issues stemming from Descartes' Rule of Signs, as in Norstr{\o}m's Criterion \cite{Norstrom1972IRR}.
-
-This form gives the impression that division $x \mapsto x^{-1}$ is necessary, but the equation can also be stated in a future value perspective that makes sense over a ring:
+The form \eqref{ann_eq} gives the impression that division $x \mapsto x^{-1}$ is necessary, but the equation can also be stated in a future value perspective that makes sense over a \emph{ring} if we define the interest rate by $i=\IY/100$.
+% \[
+% \PV\cdot (1 + \IY/100)^{\N} + \PMT\cdot \sum_{k=0}^{\N-1} (1 + (\IY/100))^{k} + \FV = 0.
+% \]
+% Of course, dividing (by 100) is indicative of a \emph{field}, but it is an artifact of social expectations and we can just as easily state everything in terms of an interest rate $i$, obtaining an equation for a \emph{ring}:
 \[
-\mathrm{[PV]}\cdot (1 + \mathrm{[I/Y]}/100)^{\mathrm{[N]}} + \mathrm{[PMT]}\cdot \sum_{k=0}^{\mathrm{[N]-1}} (1 + (\mathrm{[I/Y]}/100))^{k} + \mathrm{[FV]} = 0.
+\PV\cdot (1 + i)^{\N} + \PMT\cdot \sum_{k=0}^{\N-1} (1 +i)^{k} + \FV = 0.
 \]
-Of course, dividing (by 100) is indicative of a \emph{field}, but it is an artifact of social expectations and we can just as easily state everything in terms of an interest rate $i$, obtaining an equation for a \emph{ring}:
+In terms of the discount factor $v=1/(1+i)$, another form is
 \[
-\mathrm{[PV]}\cdot (1 + i)^{\mathrm{[N]}} + \mathrm{[PMT]}\cdot \sum_{k=0}^{\mathrm{[N]-1}} (1 +i)^{k} + \mathrm{[FV]} = 0.
+\alpha + \beta (1-v^n)/i + \gamma v^n = 0.
 \]
-
-Another form is
+% More symmetrically,
+% \[
+% \alpha v^{-n/2} + \beta (v^{-n/2}-v^{n/2})/i + \gamma v^{n/2} = 0
+% \]
+In terms of $x=v^{-n/2}>0$, this becomes
 \[
-\alpha + \beta (1-v^n)/i + \gamma v^n = 0
+\alpha x + \frac{\beta (x-x^{-1})}i + \gamma x^{-1} = 0.
 \]
-More symmetrically,
-\[
-\alpha v^{-n/2} + \beta (v^{-n/2}-v^{n/2})/i + \gamma v^{n/2} = 0
-\]
-In terms of $x=v^{-n/2}>0$,
-\[
-\alpha x + \frac{\beta (x-x^{-1})}i + \gamma x^{-1} = 0
-\]
-Solving for $x$,
-\[
-\alpha x^2 + \frac{\beta(x^2-1)}i + \gamma = 0
-\]
-\[
-(\alpha + \beta/i)x^2 = \beta/i - \gamma
-\]
+Solving for $x$, we obtain
+% \[
+% \alpha x^2 + \frac{\beta(x^2-1)}i + \gamma = 0
+% \]
+% \[
+% (\alpha + \beta/i)x^2 = \beta/i - \gamma
+% \]
 \[
 0 < x^2 = \frac{\beta/i-\gamma}{\beta/i+\alpha}
 \]
@@ -103,7 +109,7 @@ This inequality is (unsurprisingly) also encountered in our Lean code.
 %%END OF DISCUSSION THAT IS NOT FLESHED OUT
 
 The Annuity Equation has apparently been implemented in financial calculators since their introduction half a century ago (June 13, 1976 for the original Texas Instruments Business Analyst \cite{TI-CL207A-1977}).
-Here we formalize the fact you can solve for any of these five variables given the other four. This is rather explicit for PV, FV, PMT, and N, but requires Newton's method for I/Y (interest per year). However, our proof is mathematical and does not concern itself with computability. It instead sticks to mathematical existence and uniqueness.
+Here we formalize the fact one can solve for any of these five variables given the other four. This is rather explicit for PV, FV, PMT, and N, but requires Newton's method for I/Y (interest per year). However, our proof is mathematical and does not concern itself with computability. It instead sticks to mathematical existence and uniqueness.
 
 
 
@@ -116,37 +122,38 @@ Here we formalize the fact you can solve for any of these five variables given t
 % can start with a \section or \chapter for instance.
 
 \subsection{Some sample lemmas from the beginning of the project}
-\begin{lemma}\label{sub_ne_zero_of_ne}
-	\lean{sub_ne_zero_of_ne}
-	\href{https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Group/Basic.html#sub_ne_zero_of_ne}
-	{\texttt{sub\_ne\_zero\_of\_ne}}
-	
-	If $a\ne b$ then $a-b\ne 0$.
-\end{lemma}
+% \begin{lemma}\label{sub_ne_zero_of_ne}
+% 	\lean{sub_ne_zero_of_ne}
+% 	\href{https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Group/Basic.html#sub_ne_zero_of_ne}
+% 	{\texttt{sub\_ne\_zero\_of\_ne}}
+%
+% 	If $a\ne b$ then $a-b\ne 0$.
+% \end{lemma}
 
-\begin{lemma}\label{sum_pow}
-	\lean{sum_pow}
-	\leanok
-	\uses{sub_ne_zero_of_ne}
-	Given $n \in \mathbb N$ and $x \in \mathbb R$ with $x \ne 1$, we have
-    $\sum_{i=0}^{n-1} x^i = \frac{x^n - 1}{x - 1}$.
-\end{lemma}
+% \begin{lemma}\label{sum_pow}
+% 	\lean{sum_pow}
+% 	\leanok
+% 	% \uses{sub_ne_zero_of_ne}
+% 	Given $n \in \mathbb N$ and $x \in \mathbb R$ with $x \ne 1$, we have
+%     $\sum_{i=0}^{n-1} x^i = \frac{x^n - 1}{x - 1}$.
+% \end{lemma}
 
-\begin{lemma}\label{sum_pow_interest}
-	\lean{sum_pow_interest}
-	\leanok
-	\uses{sum_pow}
-	Given $n\in\mathbb N$ and $i\in\mathbb R$ with $i \ne 0$ and $1 + i \ne 0$,
-  we have $\sum_{k=0}^n (1+i)^{-k}-1= \frac{1 - (1 + i)^{-n}}i$.
-\end{lemma}
+% \begin{lemma}\label{sum_pow_interest}
+% 	\lean{sum_pow_interest}
+% 	\leanok
+% 	\uses{sum_pow}
+% 	Given $n\in\mathbb N$ and $i\in\mathbb R$ with $i \ne 0$ and $1 + i \ne 0$,
+%   we have $\sum_{k=0}^n (1+i)^{-k}-1= \frac{1 - (1 + i)^{-n}}i$.
+% \end{lemma}
 
-\begin{definition}\label{id_mul_geom_sum}
+\begin{definition}[\texttt{id\_mul\_geom\_sum}]\label{id_mul_geom_sum}
 	\lean{annuity.id_mul_geom_sum}
 	\leanok
 	The expression $\sum_{k=1}^n k v^k$.
 \end{definition}
 
-\begin{definition}\label{Ia}
+
+\begin{definition}[\texttt{Ia}]\label{Ia}
 	\lean{annuity.Ia}
 	\leanok
 	\uses{id_mul_geom_sum}
@@ -154,44 +161,7 @@ Here we formalize the fact you can solve for any of these five variables given t
 	where $v=1/(1+i)$.
 \end{definition}
 
-\begin{definition}\label{D}
-	\lean{D}
-	\leanok
-	\uses{Ia, bond_price}
-	Macaulay duration.
-\end{definition}
-
-\begin{lemma}\label{id_mul_geom_sum_formula}
-\lean{annuity.id_mul_geom_sum_formula}
-\leanok
-Given $x\in\mathbb R$ with $x\ne 1$ and $n\in\mathbb N$, we have
-\[
-	\sum_{k=0}^n k \cdot x^k =
-	(x \cdot (n \cdot x^{n + 1} - ((n + 1) \cdot x^n) + 1))/(x - 1)^2.
-\]
-\end{lemma}
-
-\begin{lemma}\label{sum_Icc_succ_eq_sum_range}
-	\lean{sum_Icc_succ_eq_sum_range}
-	\leanok
-	Given $f:\mathbb N\to\mathbb R$ and $n\in\mathbb N$, we have
-\[
-	f(0) + \sum_{k=1}^n f(k) = \sum_{k=0}^n f(k).
-\]
-\end{lemma}
-
-\begin{lemma}\label{id_mul_geom_sum₁}
-	\lean{annuity.id_mul_geom_sum₁}
-	\leanok
-	\uses{sum_Icc_succ_eq_sum_range,id_mul_geom_sum_formula}
-Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
-\[
-	\sum_{k=1}^n k \cdot x^k =
-	  (x \cdot (n \cdot x ^ {n + 1} - ((n + 1) \cdot x ^ n) + 1)) / (x - 1) ^ 2.
-\]
-\end{lemma}
-
-\begin{definition}\label{geom_sum}
+\begin{definition}[\texttt{geom\_sum}]\label{geom_sum}
 	\lean{annuity.geom_sum}
 	\leanok
 	$\mathrm{geom\_sum}$ is the function $g : \mathbb N \to \mathbb R \to \mathbb R$ given by
@@ -199,7 +169,7 @@ Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
 	  \sum_{k=1}^n v ^ k$.
 \end{definition}
 
-\begin{definition}\label{bond_price_sum}
+\begin{definition}[\texttt{bond\_price\_sum}]\label{bond_price_sum}
 	\lean{annuity.bond_price_sum}
 	\leanok
 	\uses{geom_sum}
@@ -207,14 +177,57 @@ The bond price sum is
 $r \cdot \text{geom\_sum} (n, v) + v ^ n$.
 \end{definition}
 
-\begin{definition}\label{bond_price}
+\begin{definition}[\texttt{bond\_price}]\label{bond_price}
 	\lean{annuity.bond_price}
 	\leanok
 	\uses{bond_price_sum}
 The bond price is the bond price sum with $v=1/(1+i)$.
 \end{definition}
 
-\begin{definition}\label{a}
+\begin{definition}[\texttt{D}]\label{D}
+	\lean{D}
+	\leanok
+	\uses{Ia, bond_price}
+	Macaulay duration:\\
+    \verb!(r * Ia n i + n * (1+i)!$^{-n}$\verb!) / bond_price n i r!
+\end{definition}
+
+% \begin{lemma}\label{id_mul_geom_sum_formula}
+% \lean{annuity.id_mul_geom_sum_formula}
+% \leanok
+% Given $x\in\mathbb R$ with $x\ne 1$ and $n\in\mathbb N$, we have
+% \[
+% 	\sum_{k=0}^n k \cdot x^k =
+% 	(x \cdot (n \cdot x^{n + 1} - ((n + 1) \cdot x^n) + 1))/(x - 1)^2.
+% \]
+% \end{lemma}
+
+% \begin{lemma}\label{sum_Icc_succ_eq_sum_range}
+% 	\lean{sum_Icc_succ_eq_sum_range}
+% 	\leanok
+% 	Given $f:\mathbb N\to\mathbb R$ and $n\in\mathbb N$, we have
+% \[
+% 	f(0) + \sum_{k=1}^n f(k) = \sum_{k=0}^n f(k).
+% \]
+% \end{lemma}
+
+\begin{lemma}[\texttt{id\_mul\_geom\_sum\_formula}]\label{id_mul_geom_sum_formula}
+	\lean{annuity.id_mul_geom_sum_formula}
+	\leanok
+	\uses{id_mul_geom_sum}
+Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
+\[
+	\sum_{k=1}^n k \cdot x^k =
+	  (x \cdot (n \cdot x ^ {n + 1} - ((n + 1) \cdot x ^ n) + 1)) / (x - 1) ^ 2.
+\]
+\end{lemma}
+\begin{proof}
+	\leanok
+	A well-known formula from undergraduate mathematics.
+\end{proof}
+
+
+\begin{definition}[\texttt{annuity.a}]\label{a}
 	\lean{annuity.a}
 	\leanok
 	\uses{geom_sum}
@@ -225,141 +238,212 @@ The bond price is the bond price sum with $v=1/(1+i)$.
 	\] with $g$ as in Definition \ref{geom_sum}.
 \end{definition}
 
-\begin{definition}\label{a_formula}
+\begin{definition}[\texttt{annuity.a\_formula}]\label{a_formula}
 	\lean{annuity.a_formula}
 	\leanok
-	\uses{geom_sum}
 	The expression for the present value of annuity
 	that is well-defined even for non-integer $n$:
 	$(1 - (1+i)^{-n}) / i$.
 \end{definition}
 
-\begin{lemma}\label{a_eq_a_formula}
+\begin{lemma}[\texttt{a\_eq\_a\_formula}]\label{a_eq_a_formula}
 	\lean{annuity.a_eq_a_formula}
 	\leanok
-	\uses{a_formula, a, sum_pow_interest}
+	\uses{a_formula, a}
 	The value of the expression for the present value of annuity
 	that is well-defined even for non-integer $n$
 	is equal to the original value.
-  
 \end{lemma}
+\begin{proof}
+	\leanok
+	Apply the formula $\sum_{i=0}^{n-1} x^i = \frac{x^n - 1}{x - 1}$ to $x$
+	being the discount factor $(1+i)^{-1}$.
+\end{proof}
 
 \subsection{Lemmas about correctness of CPT key}
 Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}) we have the following five lemmas.
 
-\begin{definition}\label{CPT_PV}
+\begin{definition}[\texttt{CPT\_PV}]\label{CPT_PV}
 	\lean{CPT_PV}
 	\leanok
 	\uses{a}
 	Defines a function to compute PV, as\\
-	\verb!  - PMT * (annuity.a N (IY / 100)) - FV * (1 + IY/100)⁻¹ ^ N!.
+	\verb!  - PMT * (annuity.a N (IY / 100)) - FV * (1 + IY/100)!$^{-N}$.
 \end{definition}
-\begin{definition}\label{CPT_PMT}
+\begin{definition}[\texttt{CPT\_PMT}]\label{CPT_PMT}
 	\lean{CPT_PMT}
 	\leanok
 	\uses{a}
 	Defines a function to compute PMT, as\\
-	\verb!(-PV - FV * (1 + IY / 100)⁻¹ ^ N) / annuity.a N (IY / 100)!.
+	\verb!(-PV - FV * (1 + IY / 100)!$^{-N}$\verb!) / annuity.a N (IY / 100)!.
 \end{definition}
-\begin{definition}\label{CPT_IY}
+\begin{definition}[\texttt{CPT\_IY}]\label{CPT_IY}
 	\lean{CPT_IY}
 	\leanok
 	\uses{a}
 	Defines a function to compute IY.
 \end{definition}
-\begin{definition}\label{CPT_N}
+\begin{definition}[\texttt{CPT\_N}]\label{CPT_N}
 	\lean{CPT_N}
 	\leanok
 	Defines a function to compute N, as\\
-	\verb!  (log ((PV * (IY / 100) + PMT) / (PMT - FV * (IY / 100)))) / (log (1 + IY / 100)⁻¹)!.
+	\verb!  (log ((PV * (IY / 100) + PMT) / (PMT - FV * (IY / 100)))) / (log (1 + IY / 100)!$^{-1}$\verb!)!.
 \end{definition}
-\begin{definition}\label{CPT_FV}
+\begin{definition}[[\texttt{CPT\_FV}]]\label{CPT_FV}
 	\lean{CPT_FV}
 	\leanok
 	\uses{a}
 	Defines a function to compute FV, as\\
-	\verb!(- PV - PMT * (annuity.a N (IY / 100))) / ((1 + IY/100)⁻¹ ^ N)!.
+	\verb!(- PV - PMT * (annuity.a N (IY / 100))) / ((1 + IY/100)!$^{-N}$\verb!)!.
 \end{definition}
 
-\begin{lemma}\label{PMT_eq_CPT_PMT}
+\begin{lemma}[\texttt{PMT\_eq\_CPT\_PMT}]\label{PMT_eq_CPT_PMT}
 	\lean{PMT_eq_CPT_PMT}
 	\leanok
 	\uses{CPT_PMT}
-$PMT$ equals $CPT PMT$.
+	If $\IY > -100$ and $\N \ne 0$ then $\PMT=\CPTPMT$.
 \end{lemma}
-\begin{lemma}\label{IY_eq_CPT_IY}
+\begin{proof}
+	\leanok
+	An exercise in algebraic manipulation.
+\end{proof}
+\begin{lemma}[\texttt{IY\_eq\_CPT\_IY}]\label{IY_eq_CPT_IY}
 	\lean{IY_eq_CPT_IY}
 	\leanok
-	\uses{CPT_IY}
-$IY$ equals $CPT IY$.
+	\uses{CPT_IY,duration_equation}
+	If $\N \ne 0$, $\PMT \ge 0$, $0 \le \PV + \PMT \cdot \N + \FV$, $\PV < 0$, $\FV > 0$, $\IY < -100$, and the annuity equation holds for
+  IY, PMT, PV, FV, and N, then $\IY=\CPTIY$.
 \end{lemma}
-\begin{lemma}\label{PV_eq_CPT_PV}
+\begin{proof}
+	\leanok
+	Use the Intermediate Value Theorem and strict monotonicity
+	in the Annuity Equation as a function of interest rate.
+\end{proof}
+\begin{lemma}[\texttt{PV\_eq\_CPT\_PV}]\label{PV_eq_CPT_PV}
 	\lean{PV_eq_CPT_PV}
 	\leanok
 	\uses{CPT_PV}
-$PV$ equals $CPT PV$.
+	$\PV=\CPTPV$.
 \end{lemma}
-\begin{lemma}\label{FV_eq_CPT_FV}
+\begin{proof}
+	\leanok
+	Another exercise in algebraic manipulation.
+\end{proof}
+\begin{lemma}[\texttt{FV\_eq\_CPT\_FV}]\label{FV_eq_CPT_FV}
 	\lean{FV_eq_CPT_FV}
 	\leanok
 	\uses{CPT_FV}
-$FV$ equals $CPT FV$.
+	$\FV=\CPTFV$.
 \end{lemma}
-\begin{lemma}\label{N_eq_CPT_N}
+\begin{proof}
+	\leanok
+	Another exercise in algebraic manipulation.
+\end{proof}
+\begin{lemma}[\texttt{N\_eq\_CPT\_N}]\label{N_eq_CPT_N}
 	\lean{N_eq_CPT_N}
 	\leanok
 	\uses{CPT_N,a_eq_a_formula}
-$N$ equals $CPT N$.
+	The maturity $\N$ equals $\CPTN$.
 \end{lemma}
-
-
-The following theorem summarizes these results:
-\begin{theorem}\label{annuity_equation_unique_solvability}
+\begin{proof}
+\leanok
+An exercise is algebraic manipulation.
+\end{proof}
+\begin{theorem}[\texttt{annuity\_equation\_unique\_solvability}]\label{annuity_equation_unique_solvability}
 	\lean{annuity_equation_unique_solvability}
 	\leanok
 	\uses{PMT_eq_CPT_PMT, IY_eq_CPT_IY, PV_eq_CPT_PV, FV_eq_CPT_FV, N_eq_CPT_N}
-	Given real numbers $IY>0$, $PMT\ge 0$, $PV<0$, $FV>0$ and a natural number $N \ge 1$,
+	Given real numbers $\IY>0$, $\PMT\ge 0$, $\PV<0$, $\FV>0$ and a natural number $\N \ge 1$,
 	satisfying the annuity equation, with 
-	$(FV \cdot (IY / 100) - PMT \ne 0$, we can compute each of the five variables uniquely from the other four.
+	$(\FV \cdot (\IY / 100) - \PMT \ne 0$, we can compute each of the five variables uniquely from the other four.
 \end{theorem}
-
+\begin{proof}
+	\leanok
+	We combine the results of Lemmas \ref{PMT_eq_CPT_PMT}, \ref{IY_eq_CPT_IY}, \ref{PV_eq_CPT_PV}, \ref{FV_eq_CPT_FV}, and \ref{N_eq_CPT_N}.
+\end{proof}
 
 
 \section{Macaulay duration}
 
-One of our main results is that if $D < 1 + 1 / i$ then we can recover $n$ (maturity) from $D$ (Macaulay duration \cite{Macaulay1938Problems}) and $r$ and $i$.
+Whether maturity of a bond can be recovered from the Macaulay duration \cite{Macaulay1938Problems} depends on whether the coupon rate $r$
+is less than the yield rate $i$. See Table \ref{tab:duration-recoverability}.
+The fact that there can be two solutions when $r<i$ and $1+1/i<d$ is illustrated in \cite[Figure 8.3 on page 251]{ChanTse2021_finmath}, where the situation is described as a ``deep discount'' bond.
 
-Actually $d < 1 + 1 / i$ follows from $r > i$.
-If $r < i$ then we can only if $d < 1 + 1 / i$, which indeed does not hold in the graph in Chan and Tse
-\cite[Figure 8.3 on page 251]{ChanTse2021_finmath}.
+% One of our main results is that if $D < 1 + 1 / i$ then we can recover $n$ (maturity) from $D$ (Macaulay duration \cite{Macaulay1938Problems}) and $r$ and $i$.
+
+% Actually, $D < 1 + 1 / i$ follows from $r > i$.
+% If $r < i$ then we can recover $n$ only if $D < 1 + 1 / i$.
+% For an example of how this can fail when $D < 1 + 1 / i$, see
+
 
 % From \texttt{AriExtremum.lean} and Chan and Tse figure,
-When $r<i$ and $d>1+1/i$ (``deep discount'') there is a unique local extremum
-and we cannot infer $n$ from $D$ except at the extremum.
+% When $r<i$ and $D>1+1/i$ (a situation alluded to as a ``deep discount bound'' by Chan and Tse \cite{ChanTse2021_finmath}) there is a unique local extremum
+% and we cannot infer $n$ from $D$ except at the extremum \cite{Hawawini1982Duration,hawawini2017mathematics} (see Table \ref{tab:duration-recoverability}).
 
-\begin{tabular}{ l l l}
-			  & $r<i$											& $r > i$	\\
-$d < 1 + 1/i$ &	can recover $n$			& can recover $n$\\
-$d > 1 + 1/i$ &	cannot recover $n$		& (impossible)\\
-\end{tabular}
+% \begin{tabular}{ l l l}
+% 			  & $r<i$											& $r > i$	\\
+% $d < 1 + 1/i$ &	can recover $n$			& can recover $n$\\
+% $d > 1 + 1/i$ &	cannot recover $n$		& (impossible)\\
+% \end{tabular}
+\begin{table}[ht]
+  \centering
+  \caption{Recoverability of maturity $n$ from Macaulay duration $d$.
+  The number of solutions for $n$ shown.
+  $d_{\max}$ is the maximum duration as a function of $n$,
+  which only exists when $r < i$.
+  }
+  \label{tab:duration-recoverability}
+  \begin{tabular}{lccc}
+    \hline
+		  			& $r < i$ & $r \ge i$ \\
+    \hline
+    $d < 1 + 1/i$   & 1       & 1 \\
+    $d = 1 + 1/i$   & 1 	  & 0 \\
+    $d > 1 + 1/i$   &         & 0 \\
+	$1 + 1/i < d < d_{\max}$ & 2 & \\
+	$d = d_{\max}$ & 1 & \\
+	$d > d_{\max}$ & 0 & \\
+    \hline
+  \end{tabular}
+\end{table}
 
-Aristotle \cite{achim2025aristotleimolevelautomatedtheorem} provided a single proof that $d<1+1/i$ suffices,
+
+
+Aristotle \cite{achim2025aristotleimolevelautomatedtheorem} provided a single proof that $D<1+1/i$ suffices,
 without doing a case split on whether $r<i$.
 
-\begin{lemma}\label{AriMagic.exists_pos_root_of_limits}
+\begin{lemma}[\texttt{AriMagic.exists\_pos\_root\_of\_limits}]\label{AriMagic.exists_pos_root_of_limits}
 	\lean{AriMagic.exists_pos_root_of_limits}
 	\leanok
 If a continuous function starts positive at 0 and tends to a negative limit, it has a positive root.
 \end{lemma}
+\begin{proof}
+	\leanok
+	A simple application of the Intermediate Value Theorem, formalized by Aristotle.
+\end{proof}
 
-\begin{lemma}\label{AriMagic.unique_solution_n}
+\begin{definition}[\texttt{duration\_equation}]\label{duration_equation}
+	\lean{annuity.duration_equation}
+	\leanok
+	\uses{bond_price, Ia}
+	Defined to equal
+   \verb!d * annuity.bond_price n i r! \\
+   \verb!- (r * annuity.Ia n i + ↑n * (1 + i)!$^{-n}$\verb!) = 0!.
+\end{definition}
+
+\begin{lemma}[\texttt{AriMagic.unique\_solution\_n}]\label{AriMagic.unique_solution_n}
 	\lean{AriMagic.unique_solution_n}
 	\leanok
+	\uses{AriMagic.exists_pos_root_of_limits}
 	Given $D>0, i>0, r>0$, with $D < 1 + 1/i$, there is a unique solution for the maturity $N$
 	in the duration equation with duration $D$, yield rate $i$, and coupon rate $r$.
 \end{lemma}
+\begin{proof}
+	\leanok
+	This is a subtle result, outsourced to Aristotle.
+\end{proof}
 
-\begin{theorem}
+\begin{theorem}[\texttt{eq\_CPT\_I\_of\_D}]
 	\label{eq_CPT_I_of_D}
 	\lean{eq_CPT_I_of_D}
 	\leanok
@@ -367,28 +451,66 @@ If a continuous function starts positive at 0 and tends to a negative limit, it 
 	If $D>1$, $n \ge 2$, and $r > 0$ then we can uniquely
 	compute the yield rate $i > -1$ from the duration equation.
 \end{theorem}
+\begin{proof}
+\leanok
+This proof was outsourced to Aristotle.
+\end{proof}
 
-\begin{theorem}
+\begin{theorem}[\texttt{eq\_CPT\_N\_of\_D}]
 	\label{eq_CPT_N_of_D}
 	\lean{eq_CPT_N_of_D}
 	\leanok
-	\uses{D,AriMagic.unique_solution_n,id_mul_geom_sum₁,AriMagic.exists_pos_root_of_limits}
+	\uses{D,duration_equation,AriMagic.unique_solution_n,id_mul_geom_sum_formula}
 	
-Given $n\in\mathbb N$ with $n>1$ and $i,d,r$ positive real numbers,	 with  $d < 1 + 1 / i$,
+Given $n\in\mathbb N$ with $n>1$ and $i,d,r$ positive real numbers, with  $d < 1 + 1 / i$,
  if the duration equation holds for $n,i,r,d$ then $n$ is uniquely determined,
  and given by the Lean function \verb!CPT_N_from_D!.
 \end{theorem}
+\begin{proof}
+	\leanok
+	This result is simply a wrapper for Lemma \ref{AriMagic.unique_solution_n}.
+\end{proof}
 
-\section{Future work}
+\section{Solving exercises with Aristotle and LeanCert}
+Actuarial exam questions are used to qualify students for actuarial careers.
+As such, the correctness of their solution affects actuaries directly.
+We demonstrate that \emph{LeanCert} \cite{leancert}, a new tool for verified interval arithmetic in Lean,
+can be used to formally verified such solutions. Since solutions may also involve tedious computations,
+we also make use of Aristotle.
+Our test case is \cite[Exercise 1.36]{ChanTse2021_finmath}, which reads as follows:
+
+\begin{quote}
+	Assume that $\delta(t)=\frac1{10(1+t)^3}$ and $A(0)=100$. Find the amount of interest earned in the fifth year.
+\end{quote}
+
+The solution at the end of the book \cite[Appendix B]{ChanTse2021_finmath} is given simply as
+\begin{quote}
+	0.064
+\end{quote}
+To verify this we prove the following lemma:
+\begin{lemma}[\texttt{chan\_tse\_exe\_1\_36}]\label{chan_tse_exe_1_36}
+	\lean{interest.chan_tse_exe_1_36}
+	\leanok
+	Assume that $\delta(t)=\frac1{10(1+t)^3}$ and $A(0)=100$, that $a(t)\ne 0$ for all $t$,
+	and that $a$ is differentiable on $\mathbb R$ with $a(0)=1$.
+	Then $I(A_0,a,5)\in (0.064, 0.065)$.
+\end{lemma}
+Here $a$ is the accumulation function, $A$ is the accumulated amount function, and $I$ is the earned interest function as introduced in \cite{ChanTse2021_finmath}.
+We evaluate the associated integrals by hand, then use Aristotle to formally verified the solutions,
+and finally use LeanCert to obtain the bounds $(0.064, 0.065)$.
+This proof of concept opens the door to formally verifying financial mathematics exams (such as Exam FM of the Society of Actuaries) prior to delivering them to students.
+
+
+\section{Conclusion}
 	The actuarial and financial mathematics literature is vast (see for example \cite{MR2500627}) and we have only laid some of the groundwork. A general continuation would be to add stochastic components. Related initiatives include formalization of Brownian motion in Lean \cite{degenne2025formalizationbrownianmotionlean} and, tangentially, formalization of smart contracts \cite{10.1145/3700601}.
 
-	A very concrete next task would be to simply clarify to what extent two of our six variables can be computed from the other four:
+	A very concrete next task would be to clarify to what extent two of our six variables can be computed from the other four:
 	For instance, can yield rate and maturity be computed from present value, future value, Macaulay duration, and coupon rate?
 
-\section*{Acknowledgments}
+\paragraph{Acknowledgments.}
 This work was partially supported by grants from the Simons Foundation (\#704836
 to Bj{\o}rn Kjos-Hanssen) and Majesco Inc.~(University of Hawai\textquoteleft i Foundation
 Account \#129-4770-4).
 \newpage
-\bibliographystyle{plain}
+\bibliographystyle{plainurl}
 \bibliography{cited}

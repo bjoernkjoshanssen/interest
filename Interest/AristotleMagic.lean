@@ -16,7 +16,7 @@ We also verified that the root is greater than 1, as f(1) > 0.
 
 import Mathlib.Analysis.SpecialFunctions.Pow.Deriv
 import Mathlib.Tactic.Cases
-
+import Interest.AriBorder
 set_option linter.mathlibStandardSet false
 
 open scoped BigOperators
@@ -84,6 +84,28 @@ lemma C_neg (i d r : ℝ) (hi : i ≠ 0) (hr : 0 < r) (hdi : d * i < 1 + i) :
     linarith
     simp
     exact pow_two_pos_of_ne_zero hi
+
+/-- By Bjørn. -/
+lemma C_nonpos (i d r : ℝ) (hi : i ≠ 0) (hr : 0 < r) (hdi : d * i ≤ 1 + i) :
+  C i d r ≤ 0 := by
+    unfold C;
+    unfold v_def;
+    field_simp at *;
+    suffices -(r * (d * i - (1 + i)) / i ^ 2 ) ≥ 0 by
+      linarith
+    have : i^2 ≠ 0 := by exact pow_ne_zero 2 hi
+    have : -(r * (d * i - (1 + i)) / i ^ 2)
+     = (r * ((1 + i) - d * i) / i ^ 2) := by
+      field_simp
+      ring_nf
+    rw [this]
+    apply mul_nonneg
+    apply mul_nonneg
+    linarith
+    linarith
+    simp
+    positivity
+
 
 /-
 The derivative of f is v^n * g(n).
@@ -283,6 +305,34 @@ lemma root_between_implies_end_sign_Icc {f : ℝ → ℝ} {u v r : ℝ}
   · linarith [ h ( show u ∈ Set.Icc u v by constructor <;> linarith ) ( show v ∈ Set.Icc u v by constructor <;> linarith ) huv, h ( show r ∈ Set.Icc u v by constructor <;> linarith [ hr.1, hr.2 ] ) ( show v ∈ Set.Icc u v by constructor <;> linarith ) hr.2 ];
   · linarith [ h ( show u ∈ Set.Icc u v by constructor <;> linarith ) ( show r ∈ Set.Icc u v by constructor <;> linarith [ hr.1, hr.2 ] ) hr.1 ]
 
+
+/-- By Bjørn. -/
+lemma root_between_implies_end_sign_Icc₀ {f : ℝ → ℝ} {u v r : ℝ}
+  (huv : u < v)
+  (hr : r ∈ Set.Ioo u v)
+  (hcont : ContinuousOn f (Set.Icc u v))
+  (hderiv : ∀ x ∈ Set.Ioo u v, deriv f x ≠ 0)
+  (hu : 0 ≤ f u)
+  (hr_root : f r = 0) :
+  f v < 0 := by
+  -- Since $f$ is injective on $[u, v]$, it must be strictly monotonic on this interval.
+  have h_monotone : StrictAntiOn f (Set.Icc u v) ∨ StrictMonoOn f (Set.Icc u v) := by
+    have h_inj : Set.InjOn f (Set.Icc u v) := by
+      apply_rules [ injOn_of_deriv_ne_zero_Icc ]
+    have h_monotone : ContinuousOn f (Set.Icc u v) → StrictMonoOn f (Set.Icc u v) ∨ StrictAntiOn f (Set.Icc u v) := by
+      intro h_cont
+      have h_inj : Set.InjOn f (Set.Icc u v) := h_inj
+      have h_monotone : ContinuousOn f (Set.Icc u v) → StrictMonoOn f (Set.Icc u v) ∨ StrictAntiOn f (Set.Icc u v) := by
+        have h_monotone_aux : ∀ {a b : ℝ}, a ≤ b → ContinuousOn f (Set.Icc a b) → Set.InjOn f (Set.Icc a b) → StrictMonoOn f (Set.Icc a b) ∨ StrictAntiOn f (Set.Icc a b) := by
+          exact fun {a b} a_1 a_2 a_3 ↦ ContinuousOn.strictMonoOn_of_injOn_Icc' a_1 a_2 a_3
+        exact fun _ => h_monotone_aux huv.le h_cont h_inj
+      exact h_monotone h_cont;
+    exact Or.symm ( h_monotone hcont );
+  cases' h_monotone with h h;
+  · linarith [ h ( show u ∈ Set.Icc u v by constructor <;> linarith ) ( show v ∈ Set.Icc u v by constructor <;> linarith ) huv, h ( show r ∈ Set.Icc u v by constructor <;> linarith [ hr.1, hr.2 ] ) ( show v ∈ Set.Icc u v by constructor <;> linarith ) hr.2 ];
+  · linarith [ h ( show u ∈ Set.Icc u v by constructor <;> linarith ) ( show r ∈ Set.Icc u v by constructor <;> linarith [ hr.1, hr.2 ] ) hr.1 ]
+
+
 /-
 If a function has a root r > c, starts negative at c, and has no critical points for x > c, then its limit at infinity is non-negative.
 -/
@@ -368,6 +418,113 @@ lemma at_most_one_root_of_single_critical_point
     · exact hlim;
   linarith
 
+/-- By Bjørn. -/
+lemma at_most_one_root_of_single_critical_point₀
+  {f : ℝ → ℝ} {f' : ℝ → ℝ} {L : ℝ}
+  (hcont : ContinuousOn f (Set.Ici 0))
+  (hderiv : ∀ x ∈ Set.Ioi 0, HasDerivAt f (f' x) x)
+  (h0 : 0 ≤ f 0)
+  (hlim : Filter.Tendsto f Filter.atTop (nhds L))
+  (hL : L < 0)
+  (hcrit : Set.Subsingleton {x | 0 < x ∧ f' x = 0}) :
+  Set.Subsingleton {x | 0 < x ∧ f x = 0} := by
+  intro x hx y hy;
+  -- Suppose there are two distinct roots a, b with 0 < a < b.
+  by_contra hxy
+  obtain ⟨a, b, hab⟩ : ∃ a b : ℝ, 0 < a ∧ a < b ∧ f a = 0 ∧ f b = 0 := by
+    cases lt_or_gt_of_ne hxy <;> [ exact ⟨ x, y, hx.1, ‹_›, hx.2, hy.2 ⟩ ; exact ⟨ y, x, hy.1, ‹_›, hy.2, hx.2 ⟩ ];
+  -- By Rolle's Theorem, there exists a critical point c in (a, b).
+  obtain ⟨c, hc⟩ : ∃ c ∈ Set.Ioo a b, f' c = 0 := by
+    have := exists_deriv_eq_slope f hab.2.1;
+    exact this ( hcont.mono <| by intro x hx; exact hx.1.trans' hab.1.le ) ( fun x hx => ( hderiv x <| by norm_num; linarith [ hx.1 ] ) |> HasDerivAt.differentiableAt |> DifferentiableAt.differentiableWithinAt ) |> fun ⟨ c, hc₁, hc₂ ⟩ => ⟨ c, hc₁, by rw [ ← hderiv c ( by norm_num; linarith [ hc₁.1 ] ) |> HasDerivAt.deriv, hc₂, hab.2.2.2, hab.2.2.1, sub_self, zero_div ] ⟩;
+  -- Since $c$ is the unique positive critical point, we have $f'(x) \neq 0$ for all $x \in (0, c) \cup (c, \infty)$.
+  have h_deriv_ne_zero : ∀ x ∈ Set.Ioi 0, x ≠ c → f' x ≠ 0 := by
+    exact fun x hx hx' hx'' => hx' <| hcrit ⟨ hx, hx'' ⟩ ⟨ by linarith [ hx.out, hc.1.1 ], hc.2 ⟩;
+  -- Apply root_between_implies_end_sign_Icc with u=0, v=c, r=a.
+  have h_sign_c : f c < 0 := by
+    have h_sign_c : f c < 0 := by
+      have h_cont : ContinuousOn f (Set.Icc 0 c) := by
+        exact hcont.mono ( Set.Icc_subset_Ici_self )
+      have h_diff : DifferentiableOn ℝ f (Set.Ioo 0 c) := by
+        exact fun x hx => ( hderiv x hx.1 |> HasDerivAt.differentiableAt |> DifferentiableAt.differentiableWithinAt )
+      have h_deriv_ne_zero : ∀ x ∈ Set.Ioo 0 c, deriv f x ≠ 0 := by
+        exact fun x hx => by have := hderiv x hx.1; have := this.deriv; aesop;
+      have h_sign_c : f c < 0 := by
+        have h_root_between : ∃ r ∈ Set.Ioo 0 c, f r = 0 := by
+          exact ⟨ a, ⟨ by linarith, by linarith [ hc.1.1 ] ⟩, hab.2.2.1 ⟩
+        obtain ⟨ r, hr₁, hr₂ ⟩ := h_root_between;
+        exact root_between_implies_end_sign_Icc₀
+          ( by linarith [ hr₁.1, hr₁.2 ] ) hr₁ h_cont h_deriv_ne_zero h0 hr₂;
+      exact h_sign_c;
+    linarith;
+  -- Apply root_implies_limit_ge_zero with c=c, r=b.
+  have h_limit_ge_zero : L ≥ 0 := by
+    apply root_implies_limit_ge_zero hc.1.2;
+    · exact hcont.mono ( Set.Ici_subset_Ici.mpr ( by linarith [ hc.1.1 ] ) );
+    · exact fun x hx => ( hderiv x <| lt_trans ( lt_trans hab.1 hc.1.1 ) hx ) |> HasDerivAt.differentiableAt |> DifferentiableAt.differentiableWithinAt;
+    · exact fun x hx => by rw [ hderiv x ( show 0 < x from lt_trans ( lt_trans hab.1 hc.1.1 ) hx ) |> HasDerivAt.deriv ] ; exact h_deriv_ne_zero x ( show 0 < x from lt_trans ( lt_trans hab.1 hc.1.1 ) hx ) ( ne_of_gt hx ) ;
+    · exact h_sign_c
+    · exact hab.2.2.2
+    · exact hlim;
+  linarith
+
+/-- By Bjørn. -/
+lemma at_most_one_root_of_single_critical_point₀₀
+  {f : ℝ → ℝ} {f' : ℝ → ℝ} {L : ℝ}
+  (hcont : ContinuousOn f (Set.Ici 0))
+  (hderiv : ∀ x ∈ Set.Ioi 0, HasDerivAt f (f' x) x)
+  (h0 : 0 ≤ f 0)
+  (hlim : Filter.Tendsto f Filter.atTop (nhds L))
+  (hL : L ≤ 0)
+  (hcrit : Set.Subsingleton {x | 0 < x ∧ f' x = 0}) :
+  Set.Subsingleton {x | 0 < x ∧ f x = 0} := by
+  intro x hx y hy;
+  -- Suppose there are two distinct roots a, b with 0 < a < b.
+  by_contra hxy
+  obtain ⟨a, b, hab⟩ : ∃ a b : ℝ, 0 < a ∧ a < b ∧ f a = 0 ∧ f b = 0 := by
+    cases lt_or_gt_of_ne hxy <;> [ exact ⟨ x, y, hx.1, ‹_›, hx.2, hy.2 ⟩ ; exact ⟨ y, x, hy.1, ‹_›, hy.2, hx.2 ⟩ ];
+  -- By Rolle's Theorem, there exists a critical point c in (a, b).
+  obtain ⟨c, hc⟩ : ∃ c ∈ Set.Ioo a b, f' c = 0 := by
+    have := exists_deriv_eq_slope f hab.2.1;
+    exact this ( hcont.mono <| by intro x hx; exact hx.1.trans' hab.1.le ) ( fun x hx => ( hderiv x <| by norm_num; linarith [ hx.1 ] ) |> HasDerivAt.differentiableAt |> DifferentiableAt.differentiableWithinAt ) |> fun ⟨ c, hc₁, hc₂ ⟩ => ⟨ c, hc₁, by rw [ ← hderiv c ( by norm_num; linarith [ hc₁.1 ] ) |> HasDerivAt.deriv, hc₂, hab.2.2.2, hab.2.2.1, sub_self, zero_div ] ⟩;
+  -- Since $c$ is the unique positive critical point, we have $f'(x) \neq 0$ for all $x \in (0, c) \cup (c, \infty)$.
+  have h_deriv_ne_zero : ∀ x ∈ Set.Ioi 0, x ≠ c → f' x ≠ 0 := by
+    exact fun x hx hx' hx'' => hx' <| hcrit ⟨ hx, hx'' ⟩ ⟨ by linarith [ hx.out, hc.1.1 ], hc.2 ⟩;
+  -- Apply root_between_implies_end_sign_Icc with u=0, v=c, r=a.
+  have h_sign_c : f c < 0 := by
+    have h_sign_c : f c < 0 := by
+      have h_cont : ContinuousOn f (Set.Icc 0 c) := by
+        exact hcont.mono ( Set.Icc_subset_Ici_self )
+      have h_diff : DifferentiableOn ℝ f (Set.Ioo 0 c) := by
+        exact fun x hx => ( hderiv x hx.1 |> HasDerivAt.differentiableAt |> DifferentiableAt.differentiableWithinAt )
+      have h_deriv_ne_zero : ∀ x ∈ Set.Ioo 0 c, deriv f x ≠ 0 := by
+        exact fun x hx => by have := hderiv x hx.1; have := this.deriv; aesop;
+      have h_sign_c : f c < 0 := by
+        have h_root_between : ∃ r ∈ Set.Ioo 0 c, f r = 0 := by
+          exact ⟨ a, ⟨ by linarith, by linarith [ hc.1.1 ] ⟩, hab.2.2.1 ⟩
+        obtain ⟨ r, hr₁, hr₂ ⟩ := h_root_between;
+        exact root_between_implies_end_sign_Icc₀
+          ( by linarith [ hr₁.1, hr₁.2 ] ) hr₁ h_cont h_deriv_ne_zero h0 hr₂;
+      exact h_sign_c;
+    linarith;
+  -- Apply root_implies_limit_ge_zero with c=c, r=b.
+  have h_limit_ge_zero : L ≥ 0 := by
+    apply root_implies_limit_ge_zero hc.1.2;
+    · exact hcont.mono ( Set.Ici_subset_Ici.mpr ( by linarith [ hc.1.1 ] ) );
+    · exact fun x hx => ( hderiv x <| lt_trans ( lt_trans hab.1 hc.1.1 ) hx ) |> HasDerivAt.differentiableAt |> DifferentiableAt.differentiableWithinAt;
+    · exact fun x hx => by rw [ hderiv x ( show 0 < x from lt_trans ( lt_trans hab.1 hc.1.1 ) hx ) |> HasDerivAt.deriv ] ; exact h_deriv_ne_zero x ( show 0 < x from lt_trans ( lt_trans hab.1 hc.1.1 ) hx ) ( ne_of_gt hx ) ;
+    · exact h_sign_c
+    · exact hab.2.2.2
+    · exact hlim;
+  have : L = 0 := by linarith
+  subst this
+  clear h_limit_ge_zero hL
+  clear hxy hy hx x y
+  clear hcrit
+  simp at hc h_deriv_ne_zero
+  -- Aristotle finishes the proof
+  apply claim
+  all_goals tauto
 
 /-
 There exists a unique positive real number n satisfying the equation.
@@ -399,11 +556,62 @@ theorem unique_solution_n {i d r : ℝ} (hd : 0 < d) (hi : 0 < i) (hr : 0 < r)
           ⟨ hy.1, hy.2.resolve_left <| ne_of_gt <| Real.rpow_pos_of_pos ( inv_pos.mpr <| by linarith ) _ ⟩;
       -- $f$ has at most one positive root.
       have h_at_most_one_root : Set.Subsingleton {x | 0 < x ∧ f i d r x = 0} := by
-        apply at_most_one_root_of_single_critical_point
-            h_cont h_diff h_start_pos h_tendsto_neg h_lim_neg h_at_most_one_critical;
+        apply at_most_one_root_of_single_critical_point₀
+            h_cont h_diff (by
+              have := h_start_pos
+              linarith) h_tendsto_neg h_lim_neg h_at_most_one_critical;
       -- $f$ has at least one positive root.
       have h_at_least_one_root : ∃ x > 0, f i d r x = 0 := by
         apply exists_pos_root_of_limits h_cont h_start_pos h_tendsto_neg h_lim_neg;
+      exact ⟨ h_at_least_one_root.choose,
+              h_at_least_one_root.choose_spec,
+        fun x hx => h_at_most_one_root hx
+                    h_at_least_one_root.choose_spec ⟩
+
+
+/-- By Bjørn.
+If d=1+1/i and if there is one solution, then it is unique.
+-/
+theorem unique_solution_n₀ {i d r : ℝ} (hd : 0 < d) (hi : 0 < i) (hr : 0 < r)
+  (hdi : d ≤ 1 + 1 / i)
+  (h :   ∃ n : ℝ, 0 < n ∧
+    let v := (1 + i)⁻¹
+    d * (r * ((1 - v ^ n) / i) + v ^ n) -
+    (r * (v * (n * v ^ (n + 1) - (n + 1) * v ^ n + 1) / (v - 1) ^ 2) + n * v ^ n) = 0) :
+  ∃! n : ℝ, 0 < n ∧
+    let v := (1 + i)⁻¹
+    d * (r * ((1 - v ^ n) / i) + v ^ n) -
+    (r * (v * (n * v ^ (n + 1) - (n + 1) * v ^ n + 1) / (v - 1) ^ 2) + n * v ^ n) = 0 := by
+      have h_cont : ContinuousOn (f i d r) (Set.Ici 0) := f_continuous i d r hi
+      have h_diff : ∀ x ∈ Set.Ioi 0, HasDerivAt (f i d r) (v_def i ^ x * g i d r x) x :=
+        fun x a ↦ f_deriv i d r x (by linarith) (by linarith)
+      have h_start_pos : 0 < f i d r 0 := by
+        unfold f; norm_num [ v_def ] ; exact hd
+      have h_tendsto_neg : Filter.Tendsto (f i d r) Filter.atTop (nhds (C i d r)) :=
+        f_tendsto_atTop i d r hi
+      have h_lim_neg : C i d r ≤ 0 :=
+        C_nonpos i d r (by linarith) hr (by field_simp at hdi;linarith)
+      -- By definition of $f$, we know that $f$ has at most one positive critical point.
+      have h_at_most_one_critical : Set.Subsingleton {x | g i d r x = 0} :=
+        g_at_most_one_root i d r hi hr;
+      have h_at_most_one_critical : Set.Subsingleton {x | 0 < x ∧ g i d r x = 0} :=
+        fun x hx y hy => h_at_most_one_critical hx.2 hy.2;
+      have h_at_most_one_critical : Set.Subsingleton {x | 0 < x ∧ v_def i ^ x * g i d r x = 0} := by
+        simp_all +decide
+        exact fun x hx y hy => h_at_most_one_critical
+          ⟨ hx.1, hx.2.resolve_left <| ne_of_gt <| Real.rpow_pos_of_pos ( inv_pos.mpr <| by linarith ) _ ⟩
+          ⟨ hy.1, hy.2.resolve_left <| ne_of_gt <| Real.rpow_pos_of_pos ( inv_pos.mpr <| by linarith ) _ ⟩;
+      -- $f$ has at most one positive root.
+      have h_at_most_one_root : Set.Subsingleton {x | 0 < x ∧ f i d r x = 0} := by
+        apply at_most_one_root_of_single_critical_point₀₀
+            h_cont h_diff (by
+              have := h_start_pos
+              linarith) h_tendsto_neg h_lim_neg h_at_most_one_critical;
+      -- $f$ has at least one positive root.
+      have h_at_least_one_root : ∃ x > 0, f i d r x = 0 := by
+        obtain ⟨n, hn⟩ := h
+        use n
+        tauto
       exact ⟨ h_at_least_one_root.choose,
               h_at_least_one_root.choose_spec,
         fun x hx => h_at_most_one_root hx

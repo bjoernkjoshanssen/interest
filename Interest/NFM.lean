@@ -1,4 +1,5 @@
 import Mathlib.Analysis.SpecialFunctions.Pow.Real -- Real.log
+import LeanCert
 
 /-!
 
@@ -78,7 +79,8 @@ def geom_sum : ℕ → ℝ → ℝ := fun n v =>
 def id_mul_geom_sum : ℕ → ℝ → ℝ := fun n v =>
   ∑ k ∈ Icc 1 n, k * v ^ k
 
-lemma id_mul_geom_sum_formula (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Finset.range (n+1), k * x^k =
+lemma id_mul_geom_sum_formula₀ (x : ℝ) (hx : x ≠ 1) (n : ℕ) :
+    ∑ k ∈ Finset.range (n+1), k * x^k =
   (x * (n * x^(n + 1) - ((n + 1) * x^n) + 1))/(x - 1)^2 := by
   induction n with
   | zero => simp
@@ -113,9 +115,11 @@ lemma id_mul_geom_sum_formula (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Fin
         rw [this]
     simp
     linarith
-
-lemma id_mul_geom_sum₁ (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Finset.Icc 1 n, k * x^k =
+/-- Rename to id_mul_geom_sum_formula -/
+lemma id_mul_geom_sum_formula (x : ℝ) (hx : x ≠ 1) (n : ℕ) :
+    id_mul_geom_sum n x =
   (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2 := by
+  unfold id_mul_geom_sum
   let f : ℕ → ℝ := fun k => k * x^ k
   show ∑ k ∈ Finset.Icc 1 n, f k =
   (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2
@@ -126,7 +130,7 @@ lemma id_mul_geom_sum₁ (x : ℝ) (hx : x ≠ 1) (n : ℕ) : ∑ k ∈ Finset.I
     unfold f
     simp
   rw [sum_Icc_succ_eq_sum_range]
-  apply id_mul_geom_sum_formula
+  apply id_mul_geom_sum_formula₀
   tauto
 
 noncomputable def a : ℕ → ℝ → ℝ := fun n i =>
@@ -153,8 +157,8 @@ lemma Ia_eq_Ia_formula (n : ℕ) (i : ℝ) (hi : i ≠ 0) :
     Ia n i =
     (x * (n * x ^ (n + 1) - ((n + 1) * x ^ n) + 1)) / (x - 1) ^ 2 := by
     let x := (1 + i)⁻¹
-    unfold Ia id_mul_geom_sum
-    have := @id_mul_geom_sum₁ x (by
+    unfold Ia --id_mul_geom_sum
+    have := @id_mul_geom_sum_formula x (by
         unfold x
         simp;tauto) n
     unfold x at this
@@ -435,6 +439,42 @@ noncomputable def CPT_FV (IY PMT PV : ℝ) (N : ℕ) :=
 noncomputable def CPT_N (IY PMT PV FV : ℝ) :=
   (log ((PV * (IY / 100) + PMT) / (PMT - FV * (IY / 100)))) /
       (log (1 + IY / 100)⁻¹)
+
+
+example : CPT_N 8 1 (-3) 2 ≤ 10 := by
+  unfold CPT_N
+  have : ((1:ℝ) - 2 * (8 / 100))
+    = 0.84 := by
+      ring_nf
+  rw [this]
+  have : -(3:ℝ) * (8 / 100) + 1
+    = 0.76 := by ring_nf
+  rw [this]
+  have : ((1:ℝ) + 8/100)⁻¹ = 1 / 1.08 := by
+    ring_nf
+  rw [this]
+  have : Real.log (1 / 1.08) < 0 := by interval_decide
+
+  have : ∀ x ∈ Set.Icc (0.9:ℝ) 1, Real.log x > -1 := by
+    interval_bound
+  have : Real.log (1 / 1.08) > -1 := by
+    apply this
+    simp
+    constructor
+    interval_decide
+
+  have : log (0.76 / 0.84) < 0 := by interval_decide
+
+  suffices log (0.92 / 0.84) ≤ log (1 / 1.08) * 10
+    by sorry
+
+  have : Real.exp 3 > 20 := by interval_decide
+  have : Real.log 1 < 2 := by interval_decide
+  have : Real.log 0.08 < 2 := by interval_decide
+  have : Real.log 1.08⁻¹ < 2 := by interval_decide
+  have : (1 + 8/100) > Real.exp 0 := by
+    interval_decide
+  sorry
 
 /-- [CPT] [PV] is quite simple: -/
 lemma PV_eq_CPT_PV {IY PMT PV FV : ℝ} {N : ℕ}
@@ -1010,7 +1050,7 @@ theorem annuity_equation_unique_solvability {IY PMT PV FV : ℝ} {N : ℕ}
   · intro hN
     constructor
     exact PMT_eq_CPT_PMT hann hI hN
-    exact IY_eq_CPT_IY _ _ _ _ _ hann hI
+    exact IY_eq_CPT_IY _ _ (of_IY_nonneg hann (by linarith) hPMT hFV) _ _ hann hI
     -- exact IY_eq_CPT_IY _ _ (by apply of_IY_nonneg hann;linarith;tauto;tauto) _ _ hann hI₀
   · constructor
     exact PV_eq_CPT_PV hann

@@ -2,6 +2,7 @@ import Interest.Aristotle_CPT_I
 import Interest.AristotleMagic
 import Interest.NFM
 import Interest.NFM_equiv
+import LeanCert
 /-!
 
 ## Five implicit functions from the Annuity Equation: duration version
@@ -16,6 +17,9 @@ Main results:
   compute the yield rate `i > -1` from the duration equation.
 * `eq_CPT_N_of_D`: if `i,d,r>0` and `d<1+1/i` then we
 can uniquely compute `n` from the duration equation.
+
+-- * If d>1, n≥2, r>0, i>0 and d<1+1/i then i and n are both computed from
+--   the others.
 -/
 
 open Finset Real Filter
@@ -153,9 +157,29 @@ lemma par_bond_price (n : ℕ) {i : ℝ} (hi : i > 0) :
   linarith
 
 
-/-- The maturity of an at-par bond with rate `i` and Macaulay duration `d`. -/
+/-- The maturity of an at-par bond with rate `i` and Macaulay duration `d`.
+Note that the input to log is only positive if
+d < 1 + 1 / i.
+-/
 noncomputable def CPT_N_of_D_par (i d : ℝ) :=
     log (1 - d * (1 - (1+i)⁻¹)) / log (1+i)⁻¹
+
+/- The log 0 case, where d = 1 + 1 / i. -/
+-- lemma eq_CPT_N_of_D_par_border (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
+-- (hn : n = CPT_N_of_D_par i (1 + 1 / i)) :
+-- ¬ duration_equation n i i (1 + 1 / i) := by
+--     unfold duration_equation
+--     rw [hn]
+--     unfold bond_price bond_price_sum Ia --geom_sum
+--     rw [id_mul_geom_sum_formula]
+--     unfold CPT_N_of_D_par
+--     have : (1 - (1 + 1 / i) * (1 - (1 + i)⁻¹)) = 0 := by
+--         sorry
+--     rw [this]
+--     simp
+--     sorry
+--     sorry
+
 
 /-- Determine the maturity from the duration for an at-par bond. -/
 lemma eq_CPT_N_of_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
@@ -165,8 +189,9 @@ lemma eq_CPT_N_of_D_par (n : ℕ) {i : ℝ} (hi : i > 0) (d : ℝ)
     unfold duration_equation at h
     rw [par_bond_price n hi] at h
     unfold Ia annuity.id_mul_geom_sum at h
-    have := @id_mul_geom_sum₁ (1+i)⁻¹ (by
+    have := @id_mul_geom_sum_formula (1+i)⁻¹ (by
         intro hc;simp at hc;subst hc;simp at hi) n
+    unfold id_mul_geom_sum at this
     rw [this] at h
     have : (1+i)⁻¹ ≠ 1 := by intro hc;simp at hc;linarith
     have : ((1+i)⁻¹ - 1)^2 ≠ 0 := by
@@ -471,7 +496,9 @@ lemma equation_presented_to_aristotle {n : ℕ} {i d r : ℝ} (hi : i > 0)
   have : (1+i)⁻¹ ≠ 0 := by simp;linarith
   have : (1+i)⁻¹ ≠ 1 := by simp;linarith
   set v := (1+i)⁻¹
-  rw [id_mul_geom_sum₁ _ this]
+  have temp :=id_mul_geom_sum_formula _ this
+  unfold id_mul_geom_sum at temp
+  rw [temp]
   have : ∑ k ∈ Icc 1 n, v ^ k
     = (1-v^(n)) / i := by
     have := congrFun $ @annuity.a_eq_a_formula i (by linarith) (by linarith)
@@ -500,12 +527,31 @@ lemma eq_CPT_N_of_D {n : ℕ} (hnn : (n : ℝ) > 0)
 
 
 -- Try to CPT_I when N is also unknown
--- lemma CPT_I_of_PV_DUR
---  {n : ℕ} (hnn : n > 1)
---     {i DUR r PMT PV FV : ℝ} (hd : 0 < d) (hi : i > 0)
---     (hr : 0 < r) (hdi : d < 1 + 1 / i) :
---     ∃! i,
---     duration_equation (CPT_N (100*i) PMT PV FV) i (PMT / FV) DUR
---     ∧ annuity_equation (100 * i) PMT PV FV N := by
-
---     sorry
+lemma CPT_I_of_PV_DUR
+    {n₁ n₂ : ℕ}
+    {i₁ i₂ DUR r PMT PV FV : ℝ}
+    (hr : 0 < r)
+    (hPMT: 0 < PMT)
+    (hFV : 0 < FV)
+    (hPV : PV < 0)
+    (hDUR : 1 < DUR)
+    (hDUR₁ : DUR < n₁)
+    (hDUR₂ : DUR < n₂)
+    (hi₁ : i₁ > 0) (hdi₁ : DUR < 1 + 1 / i₁)
+    (hi₂ : i₂ > 0) (hdi₂ : DUR < 1 + 1 / i₂)
+    (h : duration_equation n₁ i₁ (PMT / FV) DUR
+    ∧ annuity_equation (100 * i₁) PMT PV FV n₁
+    ∧ duration_equation n₂ i₂ (PMT / FV) DUR
+    ∧ annuity_equation (100 * i₂) PMT PV FV n₂) :
+    n₁ = n₂ ∧ i₁ = i₂
+     := by
+    unfold annuity_equation
+        duration_equation bond_price bond_price_sum
+            geom_sum at h
+    have : 100 * i₁ / 100 = i₁ := by sorry
+    rw [this] at h
+    clear this
+    have : 100 * i₂ / 100 = i₂ := by sorry
+    rw [this] at h
+    clear this
+    sorry
