@@ -2,7 +2,7 @@ import Interest.Aristotle_CPT_I
 import Interest.AristotleMagic
 import Interest.NFM
 import Interest.NFM_equiv
-import LeanCert
+-- import LeanCert
 /-!
 
 ## Five implicit functions from the Annuity Equation: duration version
@@ -527,31 +527,31 @@ lemma eq_CPT_N_of_D {n : ℕ} (hnn : (n : ℝ) > 0)
 
 
 -- Try to CPT_I when N is also unknown
-lemma CPT_I_of_PV_DUR
-    {n₁ n₂ : ℕ}
-    {i₁ i₂ DUR r PMT PV FV : ℝ}
-    (hr : 0 < r)
-    (hPMT: 0 < PMT)
-    (hFV : 0 < FV)
-    (hPV : PV < 0)
-    (hDUR : 1 < DUR)
-    (hDUR₁ : DUR < n₁)
-    (hDUR₂ : DUR < n₂)
-    (hi₁ : i₁ > 0) (hdi₁ : DUR < 1 + 1 / i₁)
-    (hi₂ : i₂ > 0) (hdi₂ : DUR < 1 + 1 / i₂)
-    (h : duration_equation n₁ i₁ (PMT / FV) DUR
-    ∧ annuity_equation (100 * i₁) PMT PV FV n₁
-    ∧ duration_equation n₂ i₂ (PMT / FV) DUR
-    ∧ annuity_equation (100 * i₂) PMT PV FV n₂) :
-    n₁ = n₂ ∧ i₁ = i₂
-     := by
-    unfold annuity_equation
-        duration_equation bond_price bond_price_sum
-            geom_sum at h
-    have : 100 * i₁ / 100 = i₁ := by sorry
-    rw [this] at h
-    clear this
-    have : 100 * i₂ / 100 = i₂ := by sorry
-    rw [this] at h
-    clear this
-    sorry
+-- lemma CPT_I_of_PV_DUR
+--     {n₁ n₂ : ℕ}
+--     {i₁ i₂ DUR r PMT PV FV : ℝ}
+--     (hr : 0 < r)
+--     (hPMT: 0 < PMT)
+--     (hFV : 0 < FV)
+--     (hPV : PV < 0)
+--     (hDUR : 1 < DUR)
+--     (hDUR₁ : DUR < n₁)
+--     (hDUR₂ : DUR < n₂)
+--     (hi₁ : i₁ > 0) (hdi₁ : DUR < 1 + 1 / i₁)
+--     (hi₂ : i₂ > 0) (hdi₂ : DUR < 1 + 1 / i₂)
+--     (h : duration_equation n₁ i₁ (PMT / FV) DUR
+--     ∧ annuity_equation (100 * i₁) PMT PV FV n₁
+--     ∧ duration_equation n₂ i₂ (PMT / FV) DUR
+--     ∧ annuity_equation (100 * i₂) PMT PV FV n₂) :
+--     n₁ = n₂ ∧ i₁ = i₂
+--      := by
+--     unfold annuity_equation
+--         duration_equation bond_price bond_price_sum
+--             geom_sum at h
+--     have : 100 * i₁ / 100 = i₁ := by sorry
+--     rw [this] at h
+--     clear this
+--     have : 100 * i₂ / 100 = i₂ := by sorry
+--     rw [this] at h
+--     clear this
+--     sorry
