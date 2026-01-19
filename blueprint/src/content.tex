@@ -121,7 +121,10 @@ Here we formalize the fact one can solve for any of these five variables given t
 % the current file can be a simple sequence of \input. Otherwise It
 % can start with a \section or \chapter for instance.
 
-\subsection{Some sample lemmas from the beginning of the project}
+\subsection{Some sample results from the project}
+
+The following results should be cross-referenced with the dependency graph at \cite{interest} and may
+be skipped if the reader is not simultaneously studying that graph and the associated documentation pages.
 % \begin{lemma}\label{sub_ne_zero_of_ne}
 % 	\lean{sub_ne_zero_of_ne}
 % 	\href{https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Group/Basic.html#sub_ne_zero_of_ne}
@@ -218,7 +221,7 @@ The bond price is the bond price sum with $v=1/(1+i)$.
 Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
 \[
 	\sum_{k=1}^n k \cdot x^k =
-	  (x \cdot (n \cdot x ^ {n + 1} - ((n + 1) \cdot x ^ n) + 1)) / (x - 1) ^ 2.
+	  \frac{x \cdot (n \cdot x ^ {n + 1} - ((n + 1) \cdot x ^ n) + 1)}{(x - 1) ^ 2}.
 \]
 \end{lemma}
 \begin{proof}
@@ -260,8 +263,8 @@ Given $x\in\mathbb R$ with $x \ne 1$ and $n\in \mathbb N$, we have
 	being the discount factor $(1+i)^{-1}$.
 \end{proof}
 
-\subsection{Lemmas about correctness of CPT key}
-Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}) we have the following five lemmas.
+% \subsection{Lemmas about correctness of CPT key}
+% Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}) we have the following five lemmas.
 
 \begin{definition}[\texttt{CPT\_PV}]\label{CPT_PV}
 	\lean{CPT_PV}
@@ -323,6 +326,7 @@ Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}
 	\lean{PV_eq_CPT_PV}
 	\leanok
 	\uses{CPT_PV}
+	Assume the annuity equation holds for $\IY, \PMT, \PV, \FV$ and $\N$. Then
 	$\PV=\CPTPV$.
 \end{lemma}
 \begin{proof}
@@ -333,6 +337,7 @@ Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}
 	\lean{FV_eq_CPT_FV}
 	\leanok
 	\uses{CPT_FV}
+	Assume the annuity equation holds for $\IY, \PMT, \PV, \FV$ and $\N$, and $\IY \ne -100$. Then
 	$\FV=\CPTFV$.
 \end{lemma}
 \begin{proof}
@@ -343,7 +348,11 @@ Under suitable conditions (see Theorem \ref{annuity_equation_unique_solvability}
 	\lean{N_eq_CPT_N}
 	\leanok
 	\uses{CPT_N,a_eq_a_formula}
-	The maturity $\N$ equals $\CPTN$.
+	Assume the annuity equation holds for $\IY, \PMT, \PV, \FV$ and $\N$.
+	
+	Assume $\IY/100\notin\{-2,-1,0\}$, and
+    $\FV \cdot (\IY / 100) - \PMT \ne 0$.
+	Then maturity $\N$ equals $\CPTN$.
 \end{lemma}
 \begin{proof}
 \leanok
@@ -367,7 +376,7 @@ An exercise is algebraic manipulation.
 
 Whether maturity of a bond can be recovered from the Macaulay duration \cite{Macaulay1938Problems} depends on whether the coupon rate $r$
 is less than the yield rate $i$. See Table \ref{tab:duration-recoverability}.
-The fact that there can be two solutions when $r<i$ and $1+1/i<d$ is illustrated in \cite[Figure 8.3 on page 251]{ChanTse2021_finmath}, where the situation is described as a ``deep discount'' bond.
+The fact that there can be two solutions when $r<i$ and $1+1/i<d$ is illustrated in \cite[Figure 8.3 on page 251]{ChanTse2021_finmath}, where the situation is described as a ``deep discount'' bond. It was first discovered by Hawawini \cite{Hawawini1982Duration,hawawini2017mathematics}.
 
 % One of our main results is that if $D < 1 + 1 / i$ then we can recover $n$ (maturity) from $D$ (Macaulay duration \cite{Macaulay1938Problems}) and $r$ and $i$.
 
@@ -483,10 +492,9 @@ Our test case is \cite[Exercise 1.36]{ChanTse2021_finmath}, which reads as follo
 	Assume that $\delta(t)=\frac1{10(1+t)^3}$ and $A(0)=100$. Find the amount of interest earned in the fifth year.
 \end{quote}
 
-The solution at the end of the book \cite[Appendix B]{ChanTse2021_finmath} is given simply as
-\begin{quote}
-	0.064
-\end{quote}
+The correct solution is
+$(e^{7/144}-e^{6/125})\cdot 100$ which in the solution at the end of the book \cite[Appendix B]{ChanTse2021_finmath} is given simply as 0.064.
+
 To verify this we prove the following lemma:
 \begin{lemma}[\texttt{chan\_tse\_exe\_1\_36}]\label{chan_tse_exe_1_36}
 	\lean{interest.chan_tse_exe_1_36}
