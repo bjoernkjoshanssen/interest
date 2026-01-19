@@ -7,3 +7,4 @@ import Interest.NFM
 import Interest.NFM_equiv
 import Interest.NFM_duration
 import Interest.NFM_cert
+import Interest.AriBorder
