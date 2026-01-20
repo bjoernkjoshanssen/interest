@@ -54,7 +54,7 @@ lemma deriv_ne_zero_imp_pos_or_neg
   (∀ x ∈ S, 0 < deriv f x) ∨ (∀ x ∈ S, deriv f x < 0) := by
     -- By definition of convexity, the image of $S$ under the derivative function is also convex.
     have h_image_convex : Convex ℝ (Set.image (deriv f) S) := by
-      exact?;
+      exact Convex.image_deriv hS hderiv;
     contrapose! hne;
     exact h_image_convex.ordConnected.out ( Set.mem_image_of_mem _ hne.1.choose_spec.1 ) ( Set.mem_image_of_mem _ hne.2.choose_spec.1 ) ⟨ hne.1.choose_spec.2, hne.2.choose_spec.2 ⟩
 
@@ -91,11 +91,9 @@ theorem claim
   (f f' : ℝ → ℝ)
   (hcont : ContinuousOn f (Set.Ici 0))
   (hderiv : ∀ x ∈ Set.Ioi 0, HasDerivAt f (f' x) x)
-  (h0 : 0 ≤ f 0)
   (a b : ℝ)
   (hab : 0 < a ∧ a < b ∧ f a = 0 ∧ f b = 0)
   (c : ℝ)
-  (h_sign_c : f c < 0)
   (hlim : Filter.Tendsto f Filter.atTop (nhds 0))
   (hc : (a < c ∧ c < b) ∧ f' c = 0)
   (h_deriv_ne_zero : ∀ (x : ℝ), 0 < x → ¬x = c → ¬f' x = 0) :
@@ -111,7 +109,7 @@ theorem claim
           exact fun x hx => hderiv x <| lt_trans ( by linarith ) hx.out
         have h_ne_zero : ∀ x ∈ Set.Ioi b, f' x ≠ 0 := by
           exact fun x hx => h_deriv_ne_zero x ( by linarith [ hx.out ] ) ( by linarith [ hx.out ] )
-        exact?;
+        exact deriv_ne_zero_imp_strict_mono_or_anti h_cont h_deriv h_ne_zero;
       exact h_strict_mono_anti
     have h_contra_0 : ∀ᶠ x in Filter.atTop, f x ≥ f (b + 1) ∨ f x ≤ f (b + 1) := by
       exact Filter.Eventually.of_forall fun x => le_total _ _

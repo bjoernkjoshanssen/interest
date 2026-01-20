@@ -270,7 +270,8 @@ lemma increasing_annuity_zero {n : ℕ} :
   have : Even n ∨ Odd n := by exact Nat.even_or_odd n
   cases this with
   | inl h =>
-    obtain ⟨k,hk⟩ := h
+    choose k hk using h
+    -- obtain ⟨k,hk⟩ := h
     subst hk
     simp
     have : k + k = 2 * k := by omega

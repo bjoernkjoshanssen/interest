@@ -1,5 +1,5 @@
 import Mathlib.Analysis.SpecialFunctions.Pow.Real -- Real.log
-import LeanCert
+-- import LeanCert
 
 /-!
 
@@ -441,40 +441,40 @@ noncomputable def CPT_N (IY PMT PV FV : ℝ) :=
       (log (1 + IY / 100)⁻¹)
 
 
-example : CPT_N 8 1 (-3) 2 ≤ 10 := by
-  unfold CPT_N
-  have : ((1:ℝ) - 2 * (8 / 100))
-    = 0.84 := by
-      ring_nf
-  rw [this]
-  have : -(3:ℝ) * (8 / 100) + 1
-    = 0.76 := by ring_nf
-  rw [this]
-  have : ((1:ℝ) + 8/100)⁻¹ = 1 / 1.08 := by
-    ring_nf
-  rw [this]
-  have : Real.log (1 / 1.08) < 0 := by interval_decide
+-- -- example : CPT_N 8 1 (-3) 2 ≤ 10 := by
+-- --   unfold CPT_N
+-- --   have : ((1:ℝ) - 2 * (8 / 100))
+-- --     = 0.84 := by
+-- --       ring_nf
+-- --   rw [this]
+-- --   have : -(3:ℝ) * (8 / 100) + 1
+-- --     = 0.76 := by ring_nf
+-- --   rw [this]
+-- --   have : ((1:ℝ) + 8/100)⁻¹ = 1 / 1.08 := by
+-- --     ring_nf
+-- --   rw [this]
+-- --   have : Real.log (1 / 1.08) < 0 := by interval_decide
 
-  have : ∀ x ∈ Set.Icc (0.9:ℝ) 1, Real.log x > -1 := by
-    interval_bound
-  have : Real.log (1 / 1.08) > -1 := by
-    apply this
-    simp
-    constructor
-    interval_decide
+--   have : ∀ x ∈ Set.Icc (0.9:ℝ) 1, Real.log x > -1 := by
+--     interval_bound
+--   have : Real.log (1 / 1.08) > -1 := by
+--     apply this
+--     simp
+--     constructor
+--     interval_decide
 
-  have : log (0.76 / 0.84) < 0 := by interval_decide
+--   have : log (0.76 / 0.84) < 0 := by interval_decide
 
-  suffices log (0.92 / 0.84) ≤ log (1 / 1.08) * 10
-    by sorry
+--   suffices log (0.92 / 0.84) ≤ log (1 / 1.08) * 10
+--     by sorry
 
-  have : Real.exp 3 > 20 := by interval_decide
-  have : Real.log 1 < 2 := by interval_decide
-  have : Real.log 0.08 < 2 := by interval_decide
-  have : Real.log 1.08⁻¹ < 2 := by interval_decide
-  have : (1 + 8/100) > Real.exp 0 := by
-    interval_decide
-  sorry
+--   have : Real.exp 3 > 20 := by interval_decide
+--   have : Real.log 1 < 2 := by interval_decide
+--   have : Real.log 0.08 < 2 := by interval_decide
+--   have : Real.log 1.08⁻¹ < 2 := by interval_decide
+--   have : (1 + 8/100) > Real.exp 0 := by
+--     interval_decide
+--   sorry
 
 /-- [CPT] [PV] is quite simple: -/
 lemma PV_eq_CPT_PV {IY PMT PV FV : ℝ} {N : ℕ}
@@ -976,8 +976,9 @@ lemma PMT_eq_CPT_PMT.aux {IY : ℝ} {N : ℕ}
     simp
     linarith
   generalize 100 / (100 + IY) = α at *
-  rw [← Nonneg.mk_eq_one hα, ← pow_eq_one_iff hN]
-  exact NNReal.eq h₂
+  rw [← Nonneg.mk_eq_one hα]
+  simp at h₂ ⊢
+  exact (pow_eq_one_iff_of_nonneg hα hN).mp h₂
 
 
 /-- [CPT] [PMT] gives the only solution for payment. -/
