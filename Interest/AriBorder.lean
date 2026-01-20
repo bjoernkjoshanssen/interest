@@ -24,7 +24,8 @@ If $f$ is strictly decreasing, then for $x > b$, $f(x) < f(b) = 0$. Since $f$ is
 Thus, we derive a contradiction.
 -/
 
-import Mathlib
+import Mathlib.Analysis.Calculus.Darboux
+import Mathlib.Analysis.Calculus.Deriv.MeanValue
 
 set_option linter.mathlibStandardSet false
 
