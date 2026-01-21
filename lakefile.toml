@@ -4,9 +4,6 @@ defaultTargets = ["Interest"]
 [leanOptions]
 pp.unicode.fun = true
 
-[[require]]
-name = "mathlib"
-scope = "leanprover-community"
 
 [[require]]
 name = "checkdecls"
