@@ -468,3 +468,5 @@ lemma chan_tse_exe_1_36 (h : δ a = fun t => 1 / (10 * (1 + t) ^ 3))
   simp
   rw [this.1]
   tauto
+
+#min_imports

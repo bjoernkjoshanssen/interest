@@ -48,13 +48,13 @@ lemma D_one {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) : D 1 i r = 1 := by
     simp
     linarith
   set v := (1+i)⁻¹
-  intro hc
-  have : (r+1) * v = 0 := by linarith
-  revert this
-  simp
-  constructor
-  linarith
-  linarith
+  have : r * v + v ≠ 0 := by
+    apply ne_of_gt
+    apply lt_of_le_of_lt
+    show 0 ≤ r * v
+    positivity
+    linarith
+  field_simp
 
 /-- The Macaulay duration does indeed satisfy the duration equation. -/
 lemma D_duration_equation (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) :
