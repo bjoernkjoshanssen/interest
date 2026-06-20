@@ -123,7 +123,10 @@ lemma f_deriv (i d r n : ℝ) (hi : i ≠ 0) (hi' : 1 + i > 0) :
   have h_f_simplified : ∀ n, f i d r n = C i d r + (v_def i)^n * (S i r * n + K i d r) := by
     intro n; rw [ f_eq_simplified i d r n hi ] ; ring_nf;
     exact inv_ne_zero ( by positivity );
-  rw [ show f i d r = _ from funext h_f_simplified ] ; convert HasDerivAt.add ( hasDerivAt_const _ _ ) ( HasDerivAt.mul ( HasDerivAt.rpow ( hasDerivAt_const _ _ ) ( hasDerivAt_id' n ) _ ) ( HasDerivAt.add ( HasDerivAt.mul ( hasDerivAt_const _ _ ) ( hasDerivAt_id' n ) ) ( hasDerivAt_const _ _ ) ) ) using 1 <;> norm_num ; ring_nf!;
+  rw [ show f i d r = _ from funext h_f_simplified ]
+  convert HasDerivAt.add ( hasDerivAt_const _ _ ) ( HasDerivAt.mul ( HasDerivAt.rpow ( hasDerivAt_const _ _ ) ( hasDerivAt_id' n ) _ ) ( HasDerivAt.add ( HasDerivAt.mul ( hasDerivAt_const _ _ ) ( hasDerivAt_id' n ) ) ( hasDerivAt_const _ _ ) ) ) using 1
+  all_goals norm_num
+  all_goals try rfl
   · unfold g; ring;
   · exact inv_pos.mpr ( by positivity )
 

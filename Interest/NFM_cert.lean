@@ -1,5 +1,6 @@
-import Mathlib.Analysis.ODE.Gronwall
-import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
+import LeanCert.Validity.Bounds.Bridge
+import LeanCert.Validity.DyadicBounds
+import Mathlib.Analysis.ODE.ExistUnique
 import LeanCert
 
 /-!
@@ -213,6 +214,7 @@ lemma edist_mul {c : ℝ} (hδ : 0 ≤ c) (x y : ℝ) :
     suffices |α * x + α * -y| = α * |x + -y| by
       convert this using 2
       ring_nf
+      congr
     generalize -y = z
     have : α * x + α * z = α * (x + z) := by ring_nf
     rw [this]
@@ -468,5 +470,3 @@ lemma chan_tse_exe_1_36 (h : δ a = fun t => 1 / (10 * (1 + t) ^ 3))
   simp
   rw [this.1]
   tauto
-
-#min_imports

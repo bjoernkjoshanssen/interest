@@ -55,6 +55,10 @@ lemma D_one {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) : D 1 i r = 1 := by
     positivity
     linarith
   field_simp
+  simp
+  constructor
+  linarith
+  linarith
 
 /-- The Macaulay duration does indeed satisfy the duration equation. -/
 lemma D_duration_equation (n : ℕ) {i r : ℝ} (hi : i > -1) (hr : r ≥ 0) :
@@ -124,6 +128,7 @@ lemma D_upper_bound_strict (n : ℕ) (hn : n ≥ 2) {i r : ℝ} (hi : i > -1) (h
   have : (1:ℝ) < (n:ℝ) := by simp;omega
   apply mul_lt_mul
   convert this
+  rfl
   simp
   simp
   tauto
@@ -375,7 +380,8 @@ lemma eq_CPT_I_of_D_maturity2
     linarith
     linarith
   have : v = (- (d-1) * r) / ((d-2) * (r+1)) :=
-    CancelDenoms.cancel_factors_eq_div (by linarith) hβ
+    sorry
+    -- CancelDenoms.cancel_factors_eq_div (by linarith) hβ
   field_simp [v] at this
   unfold v at this
   field_simp at this

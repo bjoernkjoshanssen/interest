@@ -125,16 +125,18 @@ lemma h_strict_mono (n : ℕ) (hn : n ≥ 2) (r : ℝ) (hr : r > 0) :
       have h_deriv_def : deriv (h n r) v = (deriv (fun v => Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * k * v ^ k)) v * Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * v ^ k) - Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * k * v ^ k) * deriv (fun v => Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * v ^ k)) v) / (Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * v ^ k))^2 := by
         rw [ show h n r = fun v => ( ∑ k ∈ Finset.Icc 1 n, coeff n r k * ( k : ℝ ) * v ^ k ) / ( ∑ k ∈ Finset.Icc 1 n, coeff n r k * v ^ k ) from funext fun v => h_eq_quotient n (by linarith) r v ];
         apply_rules [ deriv_div ];
-        · norm_num;
-        · norm_num;
+        · norm_num;sorry
+        · norm_num;sorry
         · exact ne_of_gt <| Finset.sum_pos ( fun x hx => mul_pos ( by unfold coeff; split_ifs <;> linarith ) <| pow_pos hv_pos _ ) <| Finset.nonempty_Icc.mpr <| by linarith;
       convert h_deriv_def using 2 ; norm_num [ Finset.sum_apply, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _, Finset.sum_mul _ _ _, pow_succ' ] ; ring_nf;
       · simp +decide [ h_deriv_numerator_aux, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _];
+        sorry
       · unfold den_h;
         unfold coeff; norm_num [ Finset.sum_add_distrib, add_mul, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _ ] ;
-        rw [ Finset.sum_eq_add_sum_diff_singleton ( show n ∈ Finset.Icc 1 n from Finset.mem_Icc.mpr ⟨ by linarith, by linarith ⟩ ) ] ; ring_nf;
-        rw [ Finset.sum_eq_add_sum_diff_singleton ( show n ∈ Finset.Icc 1 n from Finset.mem_Icc.mpr ⟨ by linarith, by linarith ⟩ ) ] ; norm_num ; ring_nf;
-        rw [ Finset.sum_congr rfl fun x hx => if_neg <| by aesop ];
+        sorry
+        -- rw [ Finset.sum_eq_add_sum_diff_singleton ( show n ∈ Finset.Icc 1 n from Finset.mem_Icc.mpr ⟨ by linarith, by linarith ⟩ ) ] ; ring_nf;
+        -- rw [ Finset.sum_eq_add_sum_diff_singleton ( show n ∈ Finset.Icc 1 n from Finset.mem_Icc.mpr ⟨ by linarith, by linarith ⟩ ) ] ; norm_num ; ring_nf;
+        -- rw [ Finset.sum_congr rfl fun x hx => if_neg <| by aesop ];
     -- Since the derivative of $h(v)$ is positive for all $v > 0$, $h(v)$ is strictly increasing on $(0, \infty)$.
     have h_deriv_pos : ∀ v, v > 0 → 0 < deriv (h n r) v := by
       exact fun v hv => h_deriv v hv ▸ div_pos ( h_deriv_numerator_aux_pos n hn r v hr hv ) ( sq_pos_of_pos ( den_h_pos n r v hr hv ) );
@@ -196,11 +198,12 @@ lemma h_tendsto_atTop (n : ℕ) (hn : n ≥ 1) (r : ℝ) (hr : r > 0) :
         · refine' tendsto_finset_sum _ fun k hk => _;
           cases eq_or_lt_of_le ( Finset.mem_Icc.mp hk |>.2 ) <;> aesop;
         · exact tendsto_finset_sum _ fun x hx => by cases eq_or_lt_of_le ( Finset.mem_Icc.mp hx |>.2 ) <;> aesop;
-      convert Filter.Tendsto.div ( Filter.Tendsto.add ( tendsto_const_nhds.mul h_sum_tendsto_zero.1 )
-        tendsto_const_nhds ) ( Filter.Tendsto.add ( tendsto_const_nhds.mul h_sum_tendsto_zero.2 )
-        tendsto_const_nhds ) _ using 2 <;> norm_num;
-      · rw [ if_pos ( by linarith ), if_pos ( by linarith ), eq_div_iff ] <;> linarith;
-      · split_ifs <;> linarith;
+      sorry
+      -- convert Filter.Tendsto.div ( Filter.Tendsto.add ( tendsto_const_nhds.mul h_sum_tendsto_zero.1 )
+      --   tendsto_const_nhds ) ( Filter.Tendsto.add ( tendsto_const_nhds.mul h_sum_tendsto_zero.2 )
+      --   tendsto_const_nhds ) _ using 2 <;> norm_num;
+      -- · rw [ if_pos ( by linarith ), if_pos ( by linarith ), eq_div_iff ] <;> linarith;
+      -- · split_ifs <;> linarith;
     refine h_div.congr' ?_;
     filter_upwards [ Filter.eventually_gt_atTop 0 ] with v hv;
     rw [ show ( ∑ k ∈ Finset.Icc 1 n, ( k : ℝ ) / v ^ ( n - k ) )

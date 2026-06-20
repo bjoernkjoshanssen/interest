@@ -51,7 +51,6 @@ lemma sum_Icc_succ_eq_sum_range (f : ℕ → ℝ) (n : ℕ) :
     left
     tauto
     right
-    simp at H
     constructor
     contrapose! H
     linarith
@@ -97,7 +96,9 @@ lemma id_mul_geom_sum_formula₀ (x : ℝ) (hx : x ≠ 1) (n : ℕ) :
     field_simp
     suffices (1 + x ^ n * (-1 - ↑n) + x ^ n * α * ↑(1 + n) + x * x ^ n * ↑n) =
         (1 + x * x ^ n * (-1 - ↑(1 + n)) + x ^ 2 * x ^ n * ↑(1 + n)) by
-        rw [this]
+        simp at this ⊢
+        left
+        linarith
     suffices x ^ n * (-1 - ↑n) + x ^ n * α * ↑(1 + n) + x * x ^ n * ↑n =
       x * x ^ n * (-1 - ↑(1 + n)) + x ^ 2 * x ^ n * ↑(1 + n) by linarith
     unfold α
@@ -105,7 +106,7 @@ lemma id_mul_geom_sum_formula₀ (x : ℝ) (hx : x ≠ 1) (n : ℕ) :
     field_simp
     suffices (x * (↑n - ↑(1 + n) * 2 + x * ↑(1 + n)) + (-1 - ↑n) + ↑(1 + n))
         = x * (-1 - ↑(1 + n) + x * ↑(1 + n)) by
-        rw [this]
+        simp at this ⊢
         linarith
     simp
     suffices x * (↑n - ↑(1 + n) * 2 + x * ↑(1 + n))
@@ -350,7 +351,7 @@ theorem annuity_limiting_value {i : ℝ} (hi : 0 < i) :
   Tendsto (fun n => a n ⌝ i) atTop (nhds (1/i)) := by
   rw [a_eq_a_formula (by linarith) (by linarith)]
   have h₀ : 0 ≤ (1 + i)⁻¹ := inv_nonneg_of_nonneg (le_of_lt <| by linarith)
-  apply ((continuous_mul_right _).tendsto _).comp
+  apply ((continuous_mul_const _).tendsto _).comp
   conv => right; rw [← sub_zero 1]
   exact ((continuous_const.sub continuous_id').tendsto _).comp $
     tendsto_pow_atTop_nhds_zero_of_abs_lt_one $ abs_of_nonneg h₀ ▸
@@ -406,7 +407,7 @@ theorem annuity_value_bounded {i : ℝ} (hi : i > 0) (n : ℕ) :
   div_le_div₀ zero_le_one (by ring_nf;simp;positivity) hi (by simp)
 
 
-  /-- The value of an annuity increases with the number of payments. -/
+/-- The value of an annuity increases with the number of payments. -/
 theorem annuity_value_increasing_with_time
     {n : ℕ} {i : ℝ} (hi : 0 < i) :
     (a_formula n ⌝ i) ≤ a_formula (n+1) ⌝ i := by
@@ -570,7 +571,7 @@ lemma N_eq_CPT_N {IY PMT PV FV : ℝ} {N : ℕ}
 lemma discount_continuity₀ (k : ℕ) :
   ContinuousOn (fun y ↦ (1 + y)⁻¹ ^ k) (Set.Ioi (-1 : ℝ)) := by
   apply ContinuousOn.pow
-  apply (continuous_add_left _).continuousOn.inv₀
+  apply (continuous_const_add _).continuousOn.inv₀
   intro x hx
   rw [Set.mem_Ioi] at hx
   apply ne_of_gt
@@ -590,16 +591,16 @@ lemma annuity_continuous {i : ℝ} {N : ℕ} : ContinuousOn
     (fun i ↦ annuity.a N i)
     (Set.Ioc (-1) i) := by
       unfold annuity.a annuity.geom_sum
-      exact  (continuous_finset_sum _ fun i _ ↦ continuous_apply i).comp_continuousOn'
+      exact  (continuous_finsetSum _ fun i _ ↦ continuous_apply i).comp_continuousOn'
         <|continuousOn_pi.mpr discount_continuity
 
 lemma annuity_equation_continuity {PMT PV FV i : ℝ} {N : ℕ} : ContinuousOn
     (fun i ↦ PV + PMT * annuity.a N i + FV * (1 + i)⁻¹ ^ N)
     (Set.Ioc (-1) i) := by
   apply ContinuousOn.add
-  · exact (continuous_add_left _).comp_continuousOn'
-      <|(continuous_mul_left _).comp_continuousOn' annuity_continuous
-  · exact (continuous_mul_left FV).comp_continuousOn' (discount_continuity _)
+  · exact (continuous_const_add _).comp_continuousOn'
+      <|(continuous_const_mul _).comp_continuousOn' annuity_continuous
+  · exact (continuous_const_mul FV).comp_continuousOn' (discount_continuity _)
 
 /-- We can eliminate the unnatural assumption by going to IY ≥ 0. -/
 lemma of_IY_nonneg {IY PV PMT FV : ℝ} {N : ℕ}
@@ -814,6 +815,7 @@ lemma CPT_IY.concrete {PMT PV FV : ℝ} {N : ℕ} (hN : N ≠ 0) (hPV : PV < 0)
           · exact hPMT
           · exact annuity.annuity_positive hN hι₁
         · convert CPT_IY.concrete.aux₀ hN hPV hFV
+          rfl
           apply max_eq_left
           linarith
       apply lt_trans
