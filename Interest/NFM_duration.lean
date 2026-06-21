@@ -2,6 +2,7 @@ import Interest.Aristotle_CPT_I
 import Interest.AristotleMagic
 import Interest.NFM
 import Interest.NFM_equiv
+import Mathlib.Tactic.CancelDenoms.Core
 -- import LeanCert
 /-!
 
@@ -379,9 +380,11 @@ lemma eq_CPT_I_of_D_maturity2
     apply hd
     linarith
     linarith
-  have : v = (- (d-1) * r) / ((d-2) * (r+1)) :=
-    sorry
-    -- CancelDenoms.cancel_factors_eq_div (by linarith) hβ
+  have : v = (- (d-1) * r) / ((d-2) * (r+1)) := by
+    have := Mathlib.Tactic.CancelDenoms.cancel_factors_eq_div
+      (h2 := hβ) (e := v) (e' := -(d - 1) * r )
+    rw [this]
+    linarith
   field_simp [v] at this
   unfold v at this
   field_simp at this

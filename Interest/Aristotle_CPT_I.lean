@@ -125,8 +125,12 @@ lemma h_strict_mono (n : ℕ) (hn : n ≥ 2) (r : ℝ) (hr : r > 0) :
       have h_deriv_def : deriv (h n r) v = (deriv (fun v => Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * k * v ^ k)) v * Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * v ^ k) - Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * k * v ^ k) * deriv (fun v => Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * v ^ k)) v) / (Finset.sum (Finset.Icc 1 n) (fun k => coeff n r k * v ^ k))^2 := by
         rw [ show h n r = fun v => ( ∑ k ∈ Finset.Icc 1 n, coeff n r k * ( k : ℝ ) * v ^ k ) / ( ∑ k ∈ Finset.Icc 1 n, coeff n r k * v ^ k ) from funext fun v => h_eq_quotient n (by linarith) r v ];
         apply_rules [ deriv_div ];
-        · norm_num;sorry
-        · norm_num;sorry
+        · refine DifferentiableAt.fun_sum ?_
+          intro i hi
+          simp
+        · refine DifferentiableAt.fun_sum ?_
+          intro i hi
+          simp
         · exact ne_of_gt <| Finset.sum_pos ( fun x hx => mul_pos ( by unfold coeff; split_ifs <;> linarith ) <| pow_pos hv_pos _ ) <| Finset.nonempty_Icc.mpr <| by linarith;
       convert h_deriv_def using 2 ; norm_num [ Finset.sum_apply, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _, Finset.sum_mul _ _ _, pow_succ' ] ; ring_nf;
       · simp +decide [ h_deriv_numerator_aux, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _];
@@ -195,9 +199,9 @@ lemma h_tendsto_atTop (n : ℕ) (hn : n ≥ 1) (r : ℝ) (hr : r > 0) :
         Filter.Tendsto (fun v : ℝ => ∑ k ∈ Finset.Icc 1 n, (1 : ℝ) / v ^ (n - k))
           Filter.atTop (nhds (∑ k ∈ Finset.Icc 1 n, if k = n then (1 : ℝ) else 0)) := by
         apply And.intro;
-        · refine' tendsto_finset_sum _ fun k hk => _;
+        · refine' tendsto_finsetSum _ fun k hk => _;
           cases eq_or_lt_of_le ( Finset.mem_Icc.mp hk |>.2 ) <;> aesop;
-        · exact tendsto_finset_sum _ fun x hx => by cases eq_or_lt_of_le ( Finset.mem_Icc.mp hx |>.2 ) <;> aesop;
+        · exact tendsto_finsetSum _ fun x hx => by cases eq_or_lt_of_le ( Finset.mem_Icc.mp hx |>.2 ) <;> aesop;
       sorry
       -- convert Filter.Tendsto.div ( Filter.Tendsto.add ( tendsto_const_nhds.mul h_sum_tendsto_zero.1 )
       --   tendsto_const_nhds ) ( Filter.Tendsto.add ( tendsto_const_nhds.mul h_sum_tendsto_zero.2 )
