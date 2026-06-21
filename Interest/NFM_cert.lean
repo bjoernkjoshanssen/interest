@@ -7,14 +7,14 @@ import LeanCert
 # Chan & Tse Exercise 1.1
 -/
 
-#eval 20000 * (1.08)^4
+-- #eval 20000 * (1.08)^4
 
-#eval (20000
-  * ((1 + ((0.08) / 2)) ^ 2)
-  * ((1 + ((0.08) / 4)) ^ 4)
-  * ((1 + ((0.08) / 6)) ^ 6)
-  * ((1 + ((0.08) / 12)) ^ 12)
-  )
+-- #eval (20000
+--   * ((1 + ((0.08) / 2)) ^ 2)
+--   * ((1 + ((0.08) / 4)) ^ 4)
+--   * ((1 + ((0.08) / 6)) ^ 6)
+--   * ((1 + ((0.08) / 12)) ^ 12)
+--   )
 
 /-!
 # Chan & Tse Exercise 1.2
@@ -127,8 +127,8 @@ lemma eq_of_deriv_eq (f g : ℝ → ℝ) (hf : Differentiable ℝ f)
     (h : deriv f = deriv g) (h₀ : f 0 = g 0) : f = g := by
     exact @eq_of_fderiv_eq ℝ ℝ _ _ _ _ ℝ _ _ f g hf hg (by
         intro x
-        rw [← deriv_fderiv]
-        rw [← deriv_fderiv]
+        rw [← toSpanSingleton_deriv]
+        rw [← toSpanSingleton_deriv]
         simp
         rw [h]) 0 h₀
 
@@ -371,7 +371,7 @@ lemma this_is_proved_instead₀ (a : ℝ → ℝ) (h : δ a = fun t ↦ 1 / (10 
     (by
       rw [h]
       simp
-      refine (((continuous_add_left 1).continuousOn.pow 3).inv₀ ?_).div_const 10
+      refine (((continuous_const_add 1).continuousOn.pow 3).inv₀ ?_).div_const 10
       · intro x hx hcontra
         simp at hcontra hx
         have : x = -1 := by linarith
@@ -393,7 +393,7 @@ lemma this_is_proved_instead₀ (a : ℝ → ℝ) (h : δ a = fun t ↦ 1 / (10 
       refine ContinuousAt.inv₀ ?_ ?_
       refine ContinuousAt.pow ?_ 3
       refine Continuous.continuousAt ?_
-      exact continuous_add_left 1
+      exact continuous_const_add 1
       simp
       exact continuousAt_const) (by
             rw [h]
